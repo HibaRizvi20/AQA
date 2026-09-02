@@ -1,0 +1,81 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AQA — Agents Guide</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--surface2:#eef1f5;--border:#e2e6ec;--ink:#0f1216;--muted:#5a6472;--faint:#8a93a1;--accent:#4f46e5;--accent-soft:#ecebfb;--ok:#12a150;--ok-soft:#e6f6ec;--gate:#b7791f;--gate-soft:#fbf1df;--fail:#d64550;--fail-soft:#fce8ea;--mono:ui-monospace,Menlo,Consolas,monospace;--shadow:0 1px 2px rgba(16,18,22,.05),0 8px 24px rgba(16,18,22,.05)}
+@media(prefers-color-scheme:dark){:root{--bg:#0c0e12;--surface:#14171d;--surface2:#1b1f27;--border:#262b34;--ink:#e8ebf0;--muted:#98a2b2;--faint:#69727f;--accent:#8b83ff;--accent-soft:#1e1b3a;--ok:#3fb950;--gate:#d6a531;--fail:#f0616a;--shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px rgba(0,0,0,.45)}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.55}
+.top{max-width:1180px;margin:0 auto;padding:34px 22px 6px}
+.eyebrow{text-transform:uppercase;letter-spacing:.11em;font-size:11.5px;font-weight:700;color:var(--accent);margin:0 0 6px}
+h1{font-size:clamp(24px,3.4vw,32px);line-height:1.1;margin:0 0 8px;letter-spacing:-.02em}
+.meta{color:var(--muted);font-size:14px;margin:0;max-width:820px}
+.layout{max-width:1180px;margin:18px auto 80px;padding:0 22px;display:grid;grid-template-columns:220px 1fr;gap:26px;align-items:start}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.toc{position:static!important}}
+.toc{position:sticky;top:14px;font-size:12.5px;display:flex;flex-direction:column;gap:2px}
+.toc a{color:var(--muted);text-decoration:none;padding:4px 9px;border-radius:7px}.toc a:hover{background:var(--surface);color:var(--ink)}.toc a.h{font-weight:700;color:var(--ink);margin-top:9px}
+.doc h2{font-size:22px;letter-spacing:-.01em;margin:32px 0 4px;padding-top:8px;border-top:1px solid var(--border)}.doc h2:first-child{border-top:none;margin-top:0}
+.doc p{font-size:14px;margin:8px 0}.lead{color:var(--muted);font-size:14.5px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:14px 18px;margin:11px 0;box-shadow:var(--shadow)}
+.card h3{margin:0 0 4px;font-size:16px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--accent-soft);color:var(--accent)}.badge.async{background:var(--gate-soft);color:var(--gate)}.badge.gate{background:var(--ok-soft);color:var(--ok)}
+.how{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;margin:7px 0;font-size:13px}.how b{color:var(--accent)}
+.nots{font-size:12.5px;color:var(--faint)}
+code{font-family:var(--mono);font-size:12.5px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+pre{font-family:var(--mono);font-size:12.2px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px 14px;overflow-x:auto;white-space:pre;margin:8px 0;box-shadow:var(--shadow)}
+ul,ol{margin:8px 0;padding-left:22px}li{margin:4px 0;font-size:13.5px}
+.callout{border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;padding:11px 15px;margin:12px 0;font-size:13.5px}
+.gate-row{background:var(--gate-soft);border:1px dashed var(--gate);border-radius:9px;padding:7px 12px;margin:7px 0 7px 26px;font-size:12.5px;color:var(--gate);font-weight:600}
+.step{display:flex;gap:11px;margin:8px 0}.step .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}.step .t{font-weight:700;font-size:13.5px}.step .d{font-size:13px;color:var(--muted)}
+</style></head><body>
+<div class="top"><p class="eyebrow">AQA · Autonomous QA Agents</p><h1>Agents, flow &amp; how to use them</h1>
+<p class="meta">What each of the 12 agents does and how, how a run executes end-to-end through five human gates, and how to use the agents individually or as skills. Designed &amp; built by Hiba Rizvi.</p></div>
+<div class="layout">
+<nav class="toc"><a class="h" href="#how">How it fits together</a><a class="h" href="#pipeline">Pipeline agents (8)</a><a class="h" href="#tracks">Async-track agents (4)</a><a class="h" href="#flow">End-to-end flow</a><a class="h" href="#use">Use separately / as skills</a></nav>
+<main class="doc">
+<h2 id="how">How it fits together</h2>
+<p class="lead">Hand AQA a scope link (a tracker epic/story or a plain feature spec) and it drives it toward a reviewed, passing test suite: cases published, bugs raised with evidence, coverage recorded — with a human at five gates, not an unattended robot.</p>
+<ul>
+<li><b>Intent vs truth.</b> Docs and designs drift; the <b>live app is the only source of truth</b> — every selector and behaviour is verified against the running app.</li>
+<li><b>Gates + dry-run.</b> Nothing external is sent without the matching human gate and an explicit confirm. A 2xx is never "success" — the inner result is asserted.</li>
+<li><b>Pickable tests.</b> Every scenario is auto-tagged by <code>@area</code> and <code>@type</code>, so any subset runs on demand.</li>
+<li><b>Never fake green.</b> If something can't be verified (a feature isn't built), the pipeline says so.</li>
+</ul>
+
+<h2 id="pipeline">Pipeline agents (the gated authoring flow)</h2>
+<div class="card"><h3>1 · Scope Analyst <span class="badge">01</span> <span class="badge gate">→ CP1</span></h3><p>Turns a scope link into a classified, testable scope with a confidence rating. Read-only.</p><div class="how"><b>How:</b> traverses the link, classifies each item as in-scope / deferred / out-of-scope, groups by area, and emits a confidence that forces early review when low.</div><p class="nots">Does NOT write tests or resolve intent-vs-app disagreements (flags them for CP1).</p></div>
+<div class="card"><h3>2 · Test Architect <span class="badge">02</span> <span class="badge gate">→ CP1</span></h3><p>Turns the scope into a plan: objectives, the positive/negative/edge split, target modules, risks, and a pilot.</p><div class="how"><b>How:</b> routes each item to a track (UI/API/perf), one testable objective per behaviour, names real modules.</div></div>
+<div class="card"><h3>3 · Case Designer <span class="badge">03</span> <span class="badge gate">→ CP2</span></h3><p>Writes each objective as a stakeholder-readable Gherkin scenario — and <b>auto-stamps <code>@area</code> + <code>@type</code> tags</b>.</p><div class="how"><b>How:</b> Given/When/Then in business language, right granularity, grounded in the real app, co-located with its step file.</div></div>
+<div class="card"><h3>4 · Tracker Publisher <span class="badge">3b</span></h3><p>Publishes the approved scenarios as issue-tracker test cases — <b>dry-run first</b>, nothing sent until confirmed.</p></div>
+<div class="card"><h3>5 · Test Generator <span class="badge">04</span> <span class="badge gate">→ CP3</span></h3><p>Turns Gherkin into runnable Playwright step definitions, reusing shared page objects. <b>Live-verifies every selector</b>; a dated skip if an element is absent.</p><p class="nots">Does NOT edit shared page objects (freeze) or self-heal.</p></div>
+<div class="card"><h3>6 · Triage / Self-Healer <span class="badge">06</span></h3><p>Classifies each failure (known-flaky / test-defect / product-bug), fixes test defects in ≤3 cycles, raises evidenced bugs for the rest. <b>Never fakes green.</b></p></div>
+<div class="card"><h3>7 · Reviewer <span class="badge">08</span> <span class="badge gate">→ CP5</span></h3><p>Checklist review vs conventions (tracker key, <b>tags present</b>, page-object freeze, no bare 2xx, self-contained, selectors verified) → a dry-run PR comment. Comments, doesn't merge.</p></div>
+<div class="card"><h3>8 · KB Curator <span class="badge">09</span></h3><p>Maintains the git-versioned Feature Registry — intent, truth (routes/APIs), our tests, freshness stamp, coverage delta.</p></div>
+
+<h2 id="tracks">Async-track agents (non-blocking)</h2>
+<div class="card"><h3>9 · Performance &amp; Logs <span class="badge async">async</span></h3><p>Pulls runtimes + logs, summarises where time goes; raises a bug only on a clear budget breach. Report-only.</p></div>
+<div class="card"><h3>10 · Drift Detector <span class="badge async">async</span></h3><p>On an app change, re-verifies Feature-Registry anchors against the live app and flags drift so tests don't silently rot.</p></div>
+<div class="card"><h3>11 · Design-Parity Analyst <span class="badge async">async</span></h3><p>Compares a design prototype vs the built app and files design-team tickets (not product bugs) for meaningful deviations.</p></div>
+<div class="card"><h3>12 · Eval Analyst <span class="badge async">async</span></h3><p>Scores an AI assistant against a golden dataset — LLM-as-judge (correctness/faithfulness) + deterministic checks (tools, trace health). Report-only.</p></div>
+
+<h2 id="flow">End-to-end flow</h2>
+<div class="step"><div class="n">1</div><div><div class="t">Scope Analyst → Test Architect</div><div class="d">scope classified, plan built.</div></div></div>
+<div class="gate-row">⏸ CP1 — human reviews scope + plan</div>
+<div class="step"><div class="n">2</div><div><div class="t">Case Designer</div><div class="d">Gherkin written + auto-tagged.</div></div></div>
+<div class="gate-row">⏸ CP2 — human reviews the cases</div>
+<div class="step"><div class="n">3</div><div><div class="t">Tracker Publisher (dry-run) → Test Generator</div><div class="d">step defs written, selectors live-verified.</div></div></div>
+<div class="gate-row">⏸ CP3 — human reviews the generated code</div>
+<div class="step"><div class="n">4</div><div><div class="t">Targeted Run → Triage/Self-Heal</div><div class="d">touched specs run; failures triaged/fixed.</div></div></div>
+<div class="gate-row">⏸ CP4 — human triages failures</div>
+<div class="step"><div class="n">5</div><div><div class="t">Regression → Reviewer</div><div class="d">whole suite green; checklist review.</div></div></div>
+<div class="gate-row">⏸ CP5 — human approves the merge</div>
+<div class="step"><div class="n">6</div><div><div class="t">Finalise + KB Curator</div><div class="d">Feature Registry updated; coverage recorded.</div></div></div>
+<p class="callout">The async tracks (Performance, Drift, Design-Parity, Eval) run alongside and never block the merge.</p>
+
+<h2 id="use">Use separately, or as skills</h2>
+<p>Every agent runs on its own, and shared capabilities are packaged as skills. Five ways to use the framework:</p>
+<pre>node pipeline/orchestrator.mjs PROJ-101            # the whole gated pipeline
+node pipeline/orchestrator.mjs PROJ-101 --approve CP1
+# — invoke a single agent (just scope, just eval, just drift)…
+# — use a skill directly (verify a selector, publish a ticket, pull perf)…
+BDD_TAGS="@area:checkout and @type:negative" npm run test:bdd   # pick tests by tag
+npx playwright test --grep "@type:edge"</pre>
+<p class="callout"><b>Rule of thumb:</b> the whole pipeline for a full feature; one agent for one step; one skill for one small task. Everything external stays dry-run until a human says "send it", and the live app — never the doc — is the source of truth.</p>
+</main></div></body></html>

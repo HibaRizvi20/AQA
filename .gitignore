@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.log
+test-results/
+playwright-report/
+.features-gen/
+dashboard/out/

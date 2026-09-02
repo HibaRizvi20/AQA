@@ -1,0 +1,18 @@
+{
+  "name": "autonomous-qa-agents",
+  "version": "1.0.0",
+  "description": "AQA - an agent-orchestrated QA automation framework (12 agents, gated pipeline, auto-tagging, flow dashboard).",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:bdd": "bddgen && playwright test --config playwright.bdd.config.ts",
+    "bdd:gen": "bddgen --config playwright.bdd.config.ts",
+    "aqa": "node pipeline/orchestrator.mjs"
+  },
+  "license": "MIT",
+  "author": "Hiba Rizvi",
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "playwright-bdd": "^8.5.0"
+  }
+}

@@ -1,0 +1,14 @@
+# Feature Registry entry (git-tracked). Intent drifts; truth is the live app.
+feature: checkout
+intent:
+  tracker: [AQA-101, AQA-102]
+truth:
+  ui_routes: [/cart, /checkout, /order/confirmation]
+  api: [POST /api/orders]
+ours:
+  feature: tests/features/checkout.feature
+  steps: tests/features/checkout.steps.ts
+  page_objects: src/shared/ui/app.po.ts
+verified_against_live: null
+owner: hiba.rizvi
+coverage: newly-covered
