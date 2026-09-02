@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AQA — Agents Guide (plain language)</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--surface2:#eef1f5;--border:#e2e6ec;--ink:#0f1216;--muted:#5a6472;--faint:#8a93a1;--accent:#4f46e5;--accent-soft:#ecebfb;--ok:#12a150;--ok-soft:#e6f6ec;--gate:#b7791f;--gate-soft:#fbf1df;--mono:ui-monospace,Menlo,Consolas,monospace;--shadow:0 1px 2px rgba(16,18,22,.05),0 8px 24px rgba(16,18,22,.05)}
+@media(prefers-color-scheme:dark){:root{--bg:#0c0e12;--surface:#14171d;--surface2:#1b1f27;--border:#262b34;--ink:#e8ebf0;--muted:#98a2b2;--faint:#69727f;--accent:#8b83ff;--accent-soft:#1e1b3a;--ok:#3fb950;--gate:#d6a531;--shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px rgba(0,0,0,.45)}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.6}
+.top{max-width:860px;margin:0 auto;padding:36px 22px 6px}
+.eyebrow{text-transform:uppercase;letter-spacing:.11em;font-size:11.5px;font-weight:700;color:var(--accent);margin:0 0 6px}
+h1{font-size:clamp(25px,3.6vw,34px);line-height:1.08;margin:0 0 10px;letter-spacing:-.02em}
+.meta{color:var(--muted);font-size:15px;margin:0;max-width:640px}
+.wrap{max-width:860px;margin:14px auto 80px;padding:0 22px}
+h2{font-size:22px;letter-spacing:-.01em;margin:34px 0 6px;padding-top:14px;border-top:1px solid var(--border)}
+p{font-size:15px;margin:9px 0}.lead{color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:15px 19px;margin:12px 0;box-shadow:var(--shadow)}
+.card h3{margin:0 0 5px;font-size:16.5px}
+.card .role{color:var(--accent);font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.05em}
+.callout{border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;padding:12px 16px;margin:14px 0;font-size:15px}
+.gate{border-left:3px solid var(--gate);background:var(--gate-soft);border-radius:0 10px 10px 0;padding:12px 16px;margin:14px 0;font-size:14.5px}
+ul,ol{margin:9px 0;padding-left:22px}li{margin:6px 0;font-size:15px}
+.stops li{margin:9px 0}
+.step{display:flex;gap:13px;margin:11px 0;align-items:flex-start}.step .n{flex:none;width:27px;height:27px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+.step .t{font-weight:700}.step .d{color:var(--muted);font-size:14.5px}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--gate-soft);color:var(--gate);margin-left:6px}
+</style></head><body>
+<div class="top"><p class="eyebrow">AQA · in plain language</p><h1>The QA agents, explained simply</h1>
+<p class="meta">No jargon. What this thing is, who does what, and why you can trust it — using a small team of specialists as the picture in your head.</p></div>
+<div class="wrap">
+
+<h2>The big idea</h2>
+<p class="lead">Testing an app by hand is slow and easy to get wrong. AQA is like hiring a <b>small, careful QA team that never sleeps</b> — except each "team member" is a software agent with one job it's very good at. You hand them a task ("test the checkout page"), and they take it from a rough idea all the way to finished, checked tests.</p>
+<p>The important part: <b>a real person stays in charge.</b> The team does the heavy lifting, but at five points along the way it stops and waits for a human to say "yes, keep going." It's an assistant team, not an autopilot.</p>
+
+<h2>Meet the team</h2>
+<p class="lead">Think of a job moving down a line of desks. Each desk has a specialist who does their bit and passes it on.</p>
+
+<div class="card"><div class="role">The reader</div><h3>1 · Scope Analyst</h3><p>Reads the request and works out <b>what actually needs testing</b> — and what's out of scope. If the request and the real app disagree, they raise a hand instead of guessing.</p></div>
+<div class="card"><div class="role">The planner</div><h3>2 · Test Architect</h3><p>Turns that into a <b>plan</b>: what to check, and how many "normal", "should-be-blocked", and "weird edge" situations to cover.</p></div>
+<div class="card"><div class="role">The writer</div><h3>3 · Case Designer</h3><p>Writes each test in <b>plain sentences anyone can read</b> ("When I pay, then I see the order confirmed") — and automatically labels each one by area and type so you can pick just the ones you want later.</p></div>
+<div class="card"><div class="role">The filer</div><h3>4 · Tracker Publisher</h3><p>Logs the agreed tests into your <b>issue tracker</b> — but shows you a preview first and sends nothing until you confirm.</p></div>
+<div class="card"><div class="role">The coder</div><h3>5 · Test Generator</h3><p>Turns those plain-English tests into <b>real automated code</b>. Crucially, it checks every button and field <b>against the live app</b>, so the tests match reality, not a stale document.</p></div>
+<div class="card"><div class="role">The fixer</div><h3>6 · Triage / Self-Healer</h3><p>When a test fails, it figures out <b>why</b>: a flaky test (fixes it), a bad test (fixes it), or a genuine app bug (writes it up with evidence). It never quietly makes a test pass to hide a problem.</p></div>
+<div class="card"><div class="role">The checker</div><h3>7 · Reviewer</h3><p>Goes down a <b>checklist</b> before anything ships — labels present, no shortcuts, everything verified — and leaves review notes. It comments; it doesn't merge on its own.</p></div>
+<div class="card"><div class="role">The librarian</div><h3>8 · KB Curator</h3><p>Keeps a tidy <b>record</b> of what the app does and what we test, so the knowledge doesn't live only in someone's head.</p></div>
+
+<h2>Four helpers working in the background</h2>
+<p class="lead">These four don't hold up the line — they run alongside and just report what they find.</p>
+<ul>
+<li><b>Performance &amp; Logs</b> — watches how fast things run and flags anything too slow.</li>
+<li><b>Drift Detector</b> — notices when the app changes so tests don't silently go stale.</li>
+<li><b>Design-Parity</b> — compares the built app against the original design and flags differences.</li>
+<li><b>Eval Analyst</b> — if the app has an AI assistant, grades its answers against a set of known-good ones.</li>
+</ul>
+
+<h2>How a job flows</h2>
+<div class="step"><div class="n">1</div><div><div class="t">Understand &amp; plan</div><div class="d">the reader and planner figure out what to test.</div></div></div>
+<div class="gate">✋ <b>Checkpoint 1</b> — a person reviews the plan before any tests are written.</div>
+<div class="step"><div class="n">2</div><div><div class="t">Write the tests in plain English</div><div class="d">the writer drafts and labels each one.</div></div></div>
+<div class="gate">✋ <b>Checkpoint 2</b> — a person approves the tests.</div>
+<div class="step"><div class="n">3</div><div><div class="t">Turn them into code</div><div class="d">the coder builds them and checks every step against the live app.</div></div></div>
+<div class="gate">✋ <b>Checkpoint 3</b> — a person reviews the code.</div>
+<div class="step"><div class="n">4</div><div><div class="t">Run them &amp; sort out failures</div><div class="d">the fixer sorts flaky vs. real bugs.</div></div></div>
+<div class="gate">✋ <b>Checkpoint 4</b> — a person decides what to do about failures.</div>
+<div class="step"><div class="n">5</div><div><div class="t">Final check &amp; hand off</div><div class="d">the checker reviews; the librarian records it.</div></div></div>
+<div class="gate">✋ <b>Checkpoint 5</b> — a person gives the final approval to merge.</div>
+
+<h2>Can I just use one of them?</h2>
+<p>Yes. You don't have to run the whole line. Need only a plan? Use the planner. Just want to grade the AI assistant? Use the Eval helper. Small one-off tasks are packaged as "skills" you can call on their own. Rule of thumb: <b>the whole team for a whole feature, one specialist for one step.</b></p>
+
+<h2>Why you can trust it</h2>
+<div class="callout">
+<b>1. The living app is the truth.</b> Tests are checked against the real running app, not a document that might be out of date.<br><br>
+<b>2. Nothing goes out without a "yes".</b> Anything that leaves the workshop — filing a ticket, opening a request — is shown to you first and only sent when you confirm.<br><br>
+<b>3. It never fakes a pass.</b> If something can't be checked, it says so plainly instead of pretending everything's fine.
+</div>
+<p class="lead">That's the whole thing: a careful specialist team that moves fast, shows its work, and always leaves a human holding the final "go".</p>
+
+</div></body></html>
