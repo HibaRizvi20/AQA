@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: test · node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20.x", "22.x", "24.x"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # No install step: the pipeline runs on Node alone. That is the point — if this job ever
+      # needs a dependency to run the pipeline, the claim on the tin has stopped being true.
+      - name: Unit and integration tests
+        run: node --test "pipeline/**/*.test.mjs"
+
+  demo:
+    name: pipeline runs end to end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
+      - name: Start the demo app
+        run: |
+          node examples/demo-app.mjs &
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:4310/health && break; sleep 0.25; done
+
+      # The demo app ships with three deliberate defects. This job asserts the pipeline finds
+      # exactly those three — a green run here would mean the pipeline stopped looking.
+      - name: Run the pipeline through every gate
+        env:
+          APP_BASE_URL: http://127.0.0.1:4310
+          API_BASE_URL: http://127.0.0.1:4310
+          TEST_USERNAME: demo@example.com
+          TEST_PASSWORD: demo-pass
+        run: |
+          set +e
+          node pipeline/orchestrator.mjs run examples/demo-spec.json
+          for gate in CP1 CP2 CP3 CP4 CP5; do
+            node pipeline/orchestrator.mjs approve spec-demo-items "$gate"
+            node pipeline/orchestrator.mjs run examples/demo-spec.json
+          done
+          set -e
+          node -e "
+            const a = require('./pipeline/runs/spec-demo-items/artifacts/05-targeted-run.json');
+            const failed = a.results.filter(r => r.verdict === 'fail').map(r => r.id).sort();
+            const expected = ['DEMO-112','DEMO-122','DEMO-131'];
+            console.log(a.passed + ' passed · ' + a.failed + ' failed · ' + a.skipped + ' skipped');
+            if (a.skipped) { console.error('a skipped contract never ran'); process.exit(1); }
+            if (JSON.stringify(failed) !== JSON.stringify(expected)) {
+              console.error('expected ' + expected + ', got ' + failed);
+              process.exit(1);
+            }
+            console.log('the pipeline found exactly the planted defects');
+          "
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aqa-run-artifacts
+          path: pipeline/runs/
+          if-no-files-found: ignore

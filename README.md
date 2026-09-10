@@ -52,25 +52,88 @@ scope-bleed. Full write-up: [`docs/agents-guide.html`](docs/agents-guide.html).
 
 ## Run it
 
+The pipeline runs on **Node alone**. There is no model in the execution path, no API key, and no
+install step — so the same spec against the same build produces the same artifacts, and a
+difference between two runs is a difference in the app.
+
 ```bash
-npm install
-cp .env.example .env                 # fill in your own demo values
-node pipeline/orchestrator.mjs DEMO-101 --status
-node pipeline/orchestrator.mjs DEMO-101 --approve CP1
-npx playwright test --grep "@area:checkout"     # pick tests by tag
+cp .env.example .env          # APP_BASE_URL and API_BASE_URL are required
+npm test                      # 81 unit + integration tests, no dependencies
+
+# see it work against the bundled demo app
+npm run demo:app &            # a small app with three deliberate defects
+npm run demo                  # stops at CP1
+npm run aqa approve spec-demo-items CP1
+npm run demo                  # ... and so on through CP5
 ```
-Open `dashboard/index.html` for the **Runs Explorer**. It drills down in four levels:
 
-| Route | Level | Shows |
-|---|---|---|
-| `#/` | **Runs Explorer** | every milestone, the cycles inside it, coverage, dates and how far each cycle got |
-| `#/milestone/<id>` | **Milestone** | the cycles in that milestone, with per-cycle coverage and open gates |
-| `#/cycle/<id>` | **Cycle** | the individual tests it ran — filter by **type** (positive, negative, edge, guard, UI, API, performance) or by **area** (checkout, auth, …), or list them all |
-| `#/test/<test-id>/<agent-id>` | **Agent trace** | that one test, carried through all 12 agents |
+The demo run ends with **6 passed · 3 failed** — the three defects planted in the demo app, found
+by the pipeline itself. CI asserts exactly those three: a fully green demo run would mean the
+pipeline had stopped looking.
 
-The trace is **per test, not per run**. Open a test and each agent shows what it received from the agent before it and what it passes to the agent after it, for that test alone — pre-flight reconciles the written intent across every source and probes the running app, the Scope Analyst receives exactly that, and so on down the chain. Every panel names its neighbour, so the hand-off is never implied.
+### Commands
 
-All 12 agents are in the trace nav: the 8 gated pipeline agents behind five human gates, and the 4 async tracks (Performance & Logs, Design Parity, AI Eval Analyst, Drift Detector) which report but never block a merge. An async track with nothing configured for the target renders as **not-run with its reason**, never as a pass, and the nav dot is derived from the panel so the two can never disagree.
+| Command | Does |
+|---|---|
+| `node pipeline/orchestrator.mjs run <spec.json>` | run until the next unapproved gate |
+| `node pipeline/orchestrator.mjs status <runId>` | where the run got to |
+| `node pipeline/orchestrator.mjs approve <runId> CP1` | clear a gate and continue |
+| `node pipeline/orchestrator.mjs reject <runId> CP1 --reason "…"` | send the guarded phase back, discarding what was derived from it |
+
+Add `--send` to let the Tracker Publisher actually write. Without it every external write is a
+dry-run: the payload is built, shown, and not sent.
+
+An artifact is written per phase under `pipeline/runs/<runId>/artifacts/`. A run that found real
+failures exits **2**, so CI can act on it; a configuration or spec problem exits **1**.
+
+### The spec
+
+A spec is what makes this runnable without a model: it states behaviours in a structured form,
+and every phase is a deterministic transform over it. A model is useful for turning a paragraph
+of prose *into* this shape — it is not needed to run the pipeline.
+
+```jsonc
+{
+  "id": "spec:demo-items",
+  "area": "items",
+  "routes": ["/", "/items-page"],
+  "auth": { "path": "/login", "tokenField": "accessToken" },
+  "behaviours": [{
+    "id": "DEMO-122",
+    "title": "Re-adding a previously deleted link saves it again",
+    "feature": "add item",
+    "when": ["I save the same link again"],
+    "then": "it is saved again as a fresh entry",
+
+    // Optional. With a contract the behaviour is executed for real; without one it is
+    // reported as skipped WITH that reason, never as a pass.
+    "contract": {
+      "method": "POST", "path": "/v1/items",
+      "body": { "url": "https://example.com/{run}" },   // {run} is unique per run
+      "expect": { "status": 201, "hasFields": ["id"] },
+      "setup": [                                        // runs first; `capture` feeds {id}
+        { "method": "POST", "path": "/v1/items", "body": { "url": "https://example.com/{run}" },
+          "expect": { "status": 201 }, "capture": "id" },
+        { "method": "DELETE", "path": "/v1/items/{id}", "expect": { "status": 204 } }
+      ]
+    }
+  }]
+}
+```
+
+`{run}` is substituted with a per-run value through both paths and bodies, so a suite can be
+re-run against a stateful app without manual cleanup. Three consecutive runs against the same
+demo app give byte-identical results.
+
+### What it will not do
+
+- **Report a probe it could not run as a pass.** No token, an unresolved placeholder, a failed
+  setup step — each is `skipped` with its reason.
+- **Stamp the Feature Registry when the run was not clean.** `verified_against_live` stays null
+  and the artifact says why.
+- **Write a credential to an artifact.** Tokens live in memory for the length of the process; a
+  test asserts no artifact contains one.
+- **Walk past an unapproved gate**, including on a resume.
 
 ## Skills demonstrated
 
