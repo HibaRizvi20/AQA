@@ -31,8 +31,8 @@
 
   --ink:    #191411;
   --ink-2:  #3D342E;
-  --muted:  #6B5F57;
-  --faint:  #9A8D84;
+  --muted:  #5E534B;
+  --faint:  #7B6E65;
 
   --accent:      #5B3DF5;
   --accent-ink:  #4A2FD6;
@@ -59,7 +59,7 @@
 :root[data-theme="dark"] {
   --bg:#0F0D11; --bg-tint:#151218; --surface:#171419; --surface-2:#1D1922; --sunk:#131016;
   --border:#282330; --border-2:#37303F;
-  --ink:#F3EFEC; --ink-2:#D3CBC6; --muted:#9E948F; --faint:#6F6570;
+  --ink:#F3EFEC; --ink-2:#D3CBC6; --muted:#B3A8A2; --faint:#9A8F98;
   --accent:#9B85FF; --accent-ink:#B4A2FF; --accent-soft:#211B36; --accent-line:#3E3363;
   --ok:#4ED18F; --ok-soft:#0F2A1E; --ok-line:#215239;
   --fail:#FF7386; --fail-soft:#2D1419; --fail-line:#5E2831;
@@ -77,8 +77,8 @@ body {
   margin: 0;
   color: var(--ink);
   font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   background:
     radial-gradient(900px 520px at 88% -6%,  rgba(255,178,120,.20), transparent 62%),
@@ -98,8 +98,8 @@ body {
 
 /* ── headings ─────────────────────────────────────────── */
 .eyebrow {
-  font-family: var(--mono); font-size: 10.5px; font-weight: 500;
-  letter-spacing: .22em; text-transform: uppercase;
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
   color: var(--muted); margin: 0 0 16px;
 }
 h1 {
@@ -108,10 +108,10 @@ h1 {
   letter-spacing: -.035em; font-weight: 600; margin: 0 0 18px;
   text-wrap: balance; max-width: 18ch;
 }
-.subt { color: var(--muted); font-size: 16px; margin: 0; max-width: 62ch; line-height: 1.65 }
+.subt { color: var(--muted); font-size: 17px; margin: 0; max-width: 62ch; line-height: 1.65 }
 
 /* ── breadcrumb ───────────────────────────────────────── */
-.crumb { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; font-family: var(--mono); font-size: 11.5px; color: var(--faint); margin-bottom: 26px; letter-spacing: .02em }
+.crumb { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; font-family: var(--mono); font-size: 12.5px; color: var(--faint); margin-bottom: 26px; letter-spacing: .02em }
 .crumb button { background: none; border: none; padding: 3px 0; cursor: pointer; font: inherit; color: var(--muted); border-bottom: 1px solid transparent; transition: color .14s, border-color .14s }
 .crumb button:hover { color: var(--accent-ink); border-bottom-color: var(--accent-line) }
 .crumb .sep { opacity: .35 }
@@ -130,7 +130,7 @@ h1 {
 /* ── pills ────────────────────────────────────────────── */
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--mono); font-size: 10.5px; font-weight: 500; letter-spacing: .04em;
+  font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: .04em;
   padding: 4px 11px; border-radius: 999px;
   background: var(--stub-soft); color: var(--muted); border: 1px solid var(--border); white-space: nowrap;
 }
@@ -152,7 +152,7 @@ h1 {
 .ms-t:hover { color: var(--accent-ink) }
 .ms-m { font-family: var(--mono); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; letter-spacing: .02em }
 .ms-m b { color: var(--muted); font-weight: 500 }
-.cov { display: flex; align-items: center; gap: 10px; margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .16em }
+.cov { display: flex; align-items: center; gap: 10px; margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .09em }
 .covbar { width: 130px; height: 6px; border-radius: 999px; background: var(--sunk); border: 1px solid var(--border); overflow: hidden }
 .covbar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #FF9A5A, var(--accent)) }
 
@@ -174,9 +174,9 @@ h1 {
 .cyc:hover::after { opacity: 1 }
 .cyc:focus-visible { outline: none; box-shadow: var(--ring) }
 .cyc-top { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between }
-.cyc-id { font-family: var(--mono); font-size: 10px; color: var(--faint); letter-spacing: .12em; text-transform: uppercase }
+.cyc-id { font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: .07em; text-transform: uppercase }
 .cyc-n { font-family: var(--display); font-weight: 600; font-size: 25px; letter-spacing: -.03em; margin-top: 8px; line-height: 1.1 }
-.cyc-m { color: var(--muted); font-size: 12.5px; margin-top: 7px; font-family: var(--mono) }
+.cyc-m { color: var(--muted); font-size: 13px; margin-top: 7px; font-family: var(--mono) }
 .cyc-row { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 12px; color: var(--faint); border-top: 1px solid var(--border); padding-top: 14px; font-variant-numeric: tabular-nums }
 .cyc-row b { font-family: var(--mono); font-size: 15px; color: var(--ink); font-weight: 600; letter-spacing: -.02em }
 
@@ -200,22 +200,22 @@ h1 {
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin: 34px 0 8px }
 .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 22px 24px; box-shadow: var(--shadow) }
 .tile .n { font-family: var(--display); font-size: 42px; font-weight: 600; letter-spacing: -.045em; font-variant-numeric: tabular-nums; line-height: 1 }
-.tile .l { font-family: var(--mono); font-size: 9.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .2em; margin-top: 12px }
+.tile .l { font-family: var(--mono); font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .1em; margin-top: 12px }
 .tile .s { font-size: 12.5px; color: var(--muted); margin-top: 6px }
 
 .dhead { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin: 6px 0 10px }
 .dhead h2 { font-family: var(--display); font-size: clamp(28px, 4vw, 40px); margin: 0; letter-spacing: -.035em; font-weight: 600; line-height: 1.05; text-wrap: balance }
-.kv { font-family: var(--mono); font-size: 11.5px; color: var(--faint); display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; letter-spacing: .02em }
+.kv { font-family: var(--mono); font-size: 12.5px; color: var(--faint); display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; letter-spacing: .02em }
 .kv b { color: var(--ink-2); font-weight: 500 }
 
 .sec { margin-top: 52px }
 .sec h3 { font-family: var(--display); font-size: 24px; margin: 0 0 6px; letter-spacing: -.028em; font-weight: 600 }
-.sec .h-sub { font-size: 14px; color: var(--muted); margin: 0 0 18px; max-width: 68ch }
+.sec .h-sub { font-size: 15px; color: var(--muted); margin: 0 0 18px; max-width: 68ch }
 
 /* ── filters ──────────────────────────────────────────── */
 .filters { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px 20px; margin: 20px 0; box-shadow: var(--shadow) }
 .frow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 }
-.flab { font-family: var(--mono); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--faint); width: 60px; flex: none }
+.flab { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); width: 60px; flex: none }
 .fchip {
   font-family: var(--mono); font-size: 11.5px; background: var(--sunk);
   border: 1px solid transparent; border-radius: 999px; padding: 6px 14px;
@@ -227,10 +227,10 @@ h1 {
 
 /* ── tables ───────────────────────────────────────────── */
 .tw { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); box-shadow: var(--shadow) }
-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 640px }
+table { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 640px }
 th {
   text-align: left; padding: 14px 20px; border-bottom: 1px solid var(--border);
-  font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .2em;
+  font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
   color: var(--faint); background: var(--surface-2); white-space: nowrap; font-weight: 500;
 }
 td { padding: 17px 20px; border-bottom: 1px solid var(--border); vertical-align: middle; font-variant-numeric: tabular-nums }
@@ -239,12 +239,12 @@ tr.clk { cursor: pointer; transition: background .12s }
 tr.clk:hover td { background: var(--surface-2) }
 tr.clk:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent) }
 
-.mono { font-family: var(--mono); font-size: 12.5px }
+.mono { font-family: var(--mono); font-size: 13px }
 .cid { font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--accent-ink); white-space: nowrap; letter-spacing: .02em }
 .arrowc { color: var(--faint); text-align: right; white-space: nowrap; font-size: 12px }
 tr.clk:hover .arrowc { color: var(--accent-ink) }
 
-.chip { font-family: var(--mono); font-size: 10.5px; background: var(--sunk); border: 1px solid transparent; border-radius: 999px; padding: 3px 10px; color: var(--muted); display: inline-block; margin: 1px 4px 1px 0; white-space: nowrap }
+.chip { font-family: var(--mono); font-size: 11.5px; background: var(--sunk); border: 1px solid transparent; border-radius: 999px; padding: 3px 10px; color: var(--muted); display: inline-block; margin: 1px 4px 1px 0; white-space: nowrap }
 .chip.ty { background: var(--accent-soft); color: var(--accent-ink) }
 .chip.ly { background: var(--run-soft); color: var(--run) }
 
@@ -257,21 +257,21 @@ tr.clk:hover .arrowc { color: var(--accent-ink) }
 .nav::-webkit-scrollbar { width: 5px } .nav::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px }
 .nav-item {
   display: flex; align-items: center; gap: 11px; text-align: left; background: transparent;
-  border: 1px solid transparent; border-radius: 999px; padding: 9px 14px; cursor: pointer;
-  color: var(--muted); font: inherit; font-size: 13px; transition: background .12s, color .12s;
+  border: 1px solid transparent; border-radius: 999px; padding: 10px 15px; cursor: pointer;
+  color: var(--ink-2); font: inherit; font-size: 14px; transition: background .12s, color .12s;
 }
 .nav-item:hover { background: var(--surface); color: var(--ink-2) }
 .nav-item.active { background: var(--ink); color: var(--bg) }
 .nav-item.active .ni-n, .nav-item.active .ni-dot { color: var(--bg); opacity: .7 }
 .ni-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--stub); flex: none; opacity: .5 }
 .ni-dot.ok { background: var(--ok); opacity: 1 } .ni-dot.gate { background: var(--gate); opacity: 1 } .ni-dot.fail { background: var(--fail); opacity: 1 }
-.ni-n { font-family: var(--mono); font-size: 10px; color: var(--faint); width: 14px; flex: none; font-variant-numeric: tabular-nums }
+.ni-n { font-family: var(--mono); font-size: 11px; color: var(--faint); width: 14px; flex: none; font-variant-numeric: tabular-nums }
 .ni-a { font-weight: 500; flex: 1; line-height: 1.3; min-width: 0; overflow-wrap: anywhere }
 .nav-item.active .ni-a { font-weight: 600 }
-.ni-g { font-family: var(--mono); font-size: 8.5px; font-weight: 600; padding: 2px 6px; border-radius: 999px; background: var(--gate-soft); color: var(--gate) }
+.ni-g { font-family: var(--mono); font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 999px; background: var(--gate-soft); color: var(--gate) }
 .ni-g.ok { background: var(--ok-soft); color: var(--ok) }
 .nav-item.active .ni-g { background: rgba(255,255,255,.16); color: var(--bg) }
-.nav-lbl { font-family: var(--mono); font-size: 8.5px; letter-spacing: .22em; text-transform: uppercase; color: var(--faint); margin: 26px 0 10px; padding-left: 14px }
+.nav-lbl { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin: 26px 0 10px; padding-left: 14px }
 .nav-lbl:first-child { margin-top: 0 }
 
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 34px 38px; box-shadow: var(--shadow) }
@@ -282,11 +282,11 @@ tr.clk:hover .arrowc { color: var(--accent-ink) }
 
 /* ── agent brief ──────────────────────────────────────── */
 .brief { border: 1px solid var(--border); border-radius: var(--r-s); background: var(--surface-2); padding: 24px 26px; margin: 22px 0 26px }
-.brief-h { font-family: var(--mono); font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: var(--faint); margin-bottom: 12px }
+.brief-h { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-bottom: 12px }
 .brief-does { font-size: 17px; line-height: 1.55; margin: 0 0 22px; color: var(--ink); letter-spacing: -.012em; max-width: 62ch }
 .brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 22px; border-top: 1px solid var(--border); padding-top: 20px }
-.brief-cell .k { font-family: var(--mono); font-size: 8.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--faint); display: block; margin-bottom: 7px }
-.brief-cell .v { font-size: 13px; line-height: 1.6; color: var(--muted) }
+.brief-cell .k { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); display: block; margin-bottom: 7px }
+.brief-cell .v { font-size: 14px; line-height: 1.6; color: var(--muted) }
 .brief-cell.never .k { color: var(--fail) }
 .brief-cell .v .mono { color: var(--accent-ink); font-size: 12px }
 
@@ -295,8 +295,8 @@ details.io { border: 1px solid var(--border); border-radius: var(--r-s); margin:
 details.io.out { background: linear-gradient(180deg, var(--accent-soft), var(--surface)); border-color: var(--accent-line) }
 details.io > summary {
   list-style: none; cursor: pointer; padding: 16px 22px; display: flex; flex-wrap: wrap;
-  gap: 10px; align-items: center; font-family: var(--mono); font-size: 9.5px;
-  letter-spacing: .2em; text-transform: uppercase; color: var(--muted); user-select: none;
+  gap: 10px; align-items: center; font-family: var(--mono); font-size: 11px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--muted); user-select: none;
 }
 details.io > summary::-webkit-details-marker { display: none }
 details.io > summary:hover { color: var(--ink) }
@@ -304,22 +304,22 @@ details.io > summary .tw-caret { font-size: 8px; color: var(--faint); transition
 details.io[open] > summary .tw-caret { transform: rotate(90deg) }
 details.io > summary .from {
   font-family: var(--mono); background: var(--surface); border: 1px solid var(--border);
-  border-radius: 999px; padding: 5px 13px; font-size: 10px; color: var(--accent-ink);
+  border-radius: 999px; padding: 5px 13px; font-size: 11px; color: var(--accent-ink);
   cursor: pointer; letter-spacing: .04em; text-transform: none; transition: all .14s;
 }
 details.io > summary .from:hover { border-color: var(--accent); box-shadow: var(--ring) }
 details.io > summary .peek { letter-spacing: .02em; text-transform: none; font-size: 11px; color: var(--faint); margin-left: auto }
 details.io[open] > summary .peek { display: none }
 .io-body { padding: 0 22px 22px }
-.io-body p { font-size: 14.5px; margin: 10px 0; color: var(--ink-2) }
+.io-body p { font-size: 15.5px; margin: 10px 0; color: var(--ink-2) }
 
 details.raw { border: 1px solid var(--border); border-radius: var(--r-xs); background: var(--sunk); margin-top: 16px; overflow: hidden }
-details.raw > summary { list-style: none; cursor: pointer; padding: 10px 14px; font-family: var(--mono); font-size: 9.5px; color: var(--faint); display: flex; gap: 9px; align-items: center; user-select: none; letter-spacing: .16em; text-transform: uppercase }
+details.raw > summary { list-style: none; cursor: pointer; padding: 10px 14px; font-family: var(--mono); font-size: 11px; color: var(--faint); display: flex; gap: 9px; align-items: center; user-select: none; letter-spacing: .09em; text-transform: uppercase }
 details.raw > summary::-webkit-details-marker { display: none }
 details.raw > summary:hover { color: var(--accent-ink) }
 details.raw > summary .tw-caret { font-size: 8px; transition: transform .16s; display: inline-block; width: 8px }
 details.raw[open] > summary .tw-caret { transform: rotate(90deg) }
-details.raw pre { margin: 0; border: none; border-top: 1px solid var(--border); border-radius: 0; background: transparent; font-size: 11.5px; max-height: 400px; overflow: auto }
+details.raw pre { margin: 0; border: none; border-top: 1px solid var(--border); border-radius: 0; background: transparent; font-size: 12.5px; max-height: 400px; overflow: auto }
 
 .arrow { text-align: center; font-size: 12px; color: var(--faint); margin: 6px 0; opacity: .5 }
 
@@ -332,15 +332,15 @@ details.raw pre { margin: 0; border: none; border-top: 1px solid var(--border); 
 .stepnav button:hover:not([disabled]) { background: var(--ink); border-color: var(--ink); color: var(--bg) }
 .stepnav button:hover:not([disabled]) .lbl { color: rgba(255,255,255,.6) }
 .stepnav button[disabled] { opacity: .35; cursor: default }
-.stepnav .lbl { display: block; font-family: var(--mono); font-size: 8.5px; color: var(--faint); letter-spacing: .2em; text-transform: uppercase; margin-bottom: 4px }
+.stepnav .lbl { display: block; font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px }
 
 /* ── code ─────────────────────────────────────────────── */
-pre { font-family: var(--mono); font-size: 12px; line-height: 1.75; background: var(--sunk); border: 1px solid var(--border); border-radius: var(--r-xs); padding: 18px 20px; overflow-x: auto; white-space: pre-wrap; margin: 12px 0; color: var(--ink-2) }
+pre { font-family: var(--mono); font-size: 13px; line-height: 1.75; background: var(--sunk); border: 1px solid var(--border); border-radius: var(--r-xs); padding: 18px 20px; overflow-x: auto; white-space: pre-wrap; margin: 12px 0; color: var(--ink-2) }
 pre::-webkit-scrollbar { height: 5px } pre::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px }
 .gherkin .kw { color: var(--accent-ink); font-weight: 600 }
 
-.sub { font-family: var(--mono); font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--faint); margin: 26px 0 10px }
-.sub2 { font-size: 12.5px; color: var(--faint); display: block; margin-top: 12px; line-height: 1.65 }
+.sub { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin: 26px 0 10px }
+.sub2 { font-size: 13.5px; color: var(--faint); display: block; margin-top: 12px; line-height: 1.65 }
 
 .sbar { display: flex; height: 7px; border-radius: 999px; overflow: hidden; background: var(--sunk); margin: 6px 0 14px; border: 1px solid var(--border) }
 .seg { height: 100% } .seg.ok { background: var(--ok) } .seg.gate { background: var(--gate) } .seg.stub { background: var(--stub) }
@@ -349,16 +349,16 @@ pre::-webkit-scrollbar { height: 5px } pre::-webkit-scrollbar-thumb { background
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; margin-right: 8px }
 .dot.ok { background: var(--ok) } .dot.gate { background: var(--gate) } .dot.stub { background: var(--stub) } .dot.fail { background: var(--fail) }
 
-ol, ul { margin: 12px 0; padding-left: 22px } li { margin: 7px 0; font-size: 13.5px; color: var(--ink-2) }
+ol, ul { margin: 12px 0; padding-left: 22px } li { margin: 8px 0; font-size: 14.5px; color: var(--ink-2) }
 
-.banner { border: 1px solid var(--accent-line); border-left-width: 3px; background: var(--accent-soft); padding: 16px 20px; border-radius: var(--r-xs); font-size: 13.5px; margin: 18px 0; color: var(--ink-2) }
+.banner { border: 1px solid var(--accent-line); border-left-width: 3px; background: var(--accent-soft); padding: 18px 22px; border-radius: var(--r-xs); font-size: 15px; margin: 18px 0; color: var(--ink-2) }
 .banner.warn { border-color: var(--gate-line); border-left-color: var(--gate); background: var(--gate-soft) }
 .banner.bad  { border-color: var(--fail-line); border-left-color: var(--fail); background: var(--fail-soft) }
 .banner b { display: block; margin-bottom: 5px; color: var(--ink); font-weight: 600; font-size: 14px }
 
 .provenance {
   display: flex; align-items: center; gap: 10px; margin: 22px 0 0;
-  font-family: var(--mono); font-size: 11.5px; color: var(--muted); letter-spacing: .02em;
+  font-family: var(--mono); font-size: 13px; color: var(--muted); letter-spacing: .02em;
 }
 .provenance b { color: var(--ink); font-weight: 600 }
 .provenance .dotline { width: 6px; height: 6px; border-radius: 999px; background: var(--ok); flex: none; box-shadow: 0 0 0 3px var(--ok-soft) }
