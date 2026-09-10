@@ -524,7 +524,7 @@ R({id:"AQA-403", title:"Deleting an account is confirmed first", type:"guard", a
    steps:[["Choose delete","alertdialog raised"],["Cancel","no DELETE request observed on the network"],["Read the profile","HTTP 200 — account intact"]],
    conclusion:"Guarded. The case asserts that no request was sent, not merely that the account survived."}}),
 
-R({id:"AQA-501", title:"Checkout submit stays inside its latency budget", type:"positive", layer:"performance", area:"performance",
+R({id:"AQA-501", title:"Checkout submit stays inside its latency budget", type:"positive", layer:"performance", area:"checkout",
   verdict:"fail", duration:"140 samples",
   spec:{source:"docs · checkout runbook", ref:"runbook §7", text:"checkout.submit p95 must stay under 800ms."},
   probe:[{what:"the metrics API", found:true, evidence:"run history available for 140 samples"}],
