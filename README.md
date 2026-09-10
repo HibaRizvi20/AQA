@@ -45,7 +45,7 @@ scope-bleed. Full write-up: [`docs/agents-guide.html`](docs/agents-guide.html).
 | `skills/` | reusable capabilities (selector-verify, gherkin-authoring, tracker-publish, evidence, perf-pull) |
 | `commands/` | the orchestrator + resume + daily-report entry points |
 | `pipeline/` | the phase runner (`orchestrator.mjs`), phase modules, and the tag engine (`lib/tags.mjs`) |
-| `dashboard/` | the **Cycles Explorer** — cycles → test flows & cases → per-agent trace, plus the flat Runs Explorer (`dashboard/index.html`) |
+| `dashboard/` | the **Runs Explorer** — milestones → cycles → tests → per-test agent trace (`dashboard/index.html`) |
 | `docs/` | the architecture guide |
 | `tests/features/` | sample Gherkin (playwright-bdd) for the demo app |
 | `conventions.md` | the standard the agents write to |
@@ -59,17 +59,18 @@ node pipeline/orchestrator.mjs DEMO-101 --status
 node pipeline/orchestrator.mjs DEMO-101 --approve CP1
 npx playwright test --grep "@area:checkout"     # pick tests by tag
 ```
-Open `dashboard/index.html` for the **Cycles Explorer**. It drills down in three levels:
+Open `dashboard/index.html` for the **Runs Explorer**. It drills down in four levels:
 
 | Route | Level | Shows |
 |---|---|---|
-| `#/` | **Cycles** | every cycle that has been run, its test-case count, findings, and which of the 12 agents produced output |
-| `#/cycle/<cycle-id>` | **Flows & cases** | the test cases in that cycle, all 12 agents with their result, and the findings table |
-| `#/run/<run-id>/<agent-id>` | **Agent trace** | one agent, expanded into what it received and what it produced |
+| `#/` | **Runs Explorer** | every milestone, the cycles inside it, coverage, dates and how far each cycle got |
+| `#/milestone/<id>` | **Milestone** | the cycles in that milestone, with per-cycle coverage and open gates |
+| `#/cycle/<id>` | **Cycle** | the individual tests it ran — filter by **type** (positive, negative, edge, guard, UI, API, performance) or by **area** (checkout, auth, …), or list them all |
+| `#/test/<test-id>/<agent-id>` | **Agent trace** | that one test, carried through all 12 agents |
 
-`#/runs` still opens the flat Runs Explorer, and any `#/run/<run-id>` link is shareable — it jumps straight to that flow, like a trace URL.
+The trace is **per test, not per run**. Open a test and each agent shows what it received from the agent before it and what it passes to the agent after it, for that test alone — pre-flight reconciles the written intent across every source and probes the running app, the Scope Analyst receives exactly that, and so on down the chain. Every panel names its neighbour, so the hand-off is never implied.
 
-All 12 agents are visible in the trace nav: the 8 gated pipeline agents, and the 4 async tracks (Performance & Logs, Design Parity, AI Eval Analyst, Drift Detector) which report but never block a merge. An async track with nothing configured for the target is shown as **not-run with its reason**, never as a pass.
+All 12 agents are in the trace nav: the 8 gated pipeline agents behind five human gates, and the 4 async tracks (Performance & Logs, Design Parity, AI Eval Analyst, Drift Detector) which report but never block a merge. An async track with nothing configured for the target renders as **not-run with its reason**, never as a pass, and the nav dot is derived from the panel so the two can never disagree.
 
 ## Skills demonstrated
 

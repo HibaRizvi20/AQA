@@ -1,50 +1,76 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AQA Cycles Explorer</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AQA Runs Explorer</title>
 <style>
 :root{--bg:#f6f7f9;--surface:#fff;--surface2:#eef1f5;--border:#e2e6ec;--ink:#0f1216;--muted:#5a6472;--faint:#8a93a1;--accent:#4f46e5;--accent-soft:#ecebfb;--ok:#12a150;--ok-soft:#e6f6ec;--gate:#b7791f;--gate-soft:#fbf1df;--fail:#d64550;--fail-soft:#fce8ea;--run:#2f6feb;--run-soft:#e6effc;--stub:#8a93a1;--stub-soft:#f1f3f6;--mono:ui-monospace,Menlo,Consolas,monospace;--shadow:0 1px 2px rgba(16,18,22,.05),0 8px 24px rgba(16,18,22,.06)}
 @media(prefers-color-scheme:dark){:root{--bg:#0c0e12;--surface:#14171d;--surface2:#1b1f27;--border:#262b34;--ink:#e8ebf0;--muted:#98a2b2;--faint:#69727f;--accent:#8b83ff;--accent-soft:#1e1b3a;--ok:#3fb950;--ok-soft:#12241a;--gate:#d6a531;--gate-soft:#2a2113;--fail:#f0616a;--fail-soft:#2a1417;--run:#5b9bff;--run-soft:#14233d;--stub:#69727f;--stub-soft:#191d24;--shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px rgba(0,0,0,.45)}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1180px;margin:0 auto;padding:24px 20px 80px}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 20px 90px}
 .eyebrow{text-transform:uppercase;letter-spacing:.11em;font-size:11px;font-weight:700;color:var(--accent);margin:0 0 5px}
 h1{font-size:clamp(21px,2.8vw,28px);line-height:1.12;margin:0 0 5px;letter-spacing:-.02em}
-.subt{color:var(--muted);font-size:13.5px;margin:0;max-width:80ch}
+.subt{color:var(--muted);font-size:13.5px;margin:0;max-width:84ch}
 .crumb{display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--faint);margin-bottom:10px;flex-wrap:wrap}
 .crumb button{background:none;border:none;color:var(--accent);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;padding:0}
-.crumb span.sep{opacity:.5}
-.search{display:flex;gap:10px;align-items:center;margin:18px 0 6px}
+.crumb .sep{opacity:.5}
+.search{display:flex;gap:10px;align-items:center;margin:16px 0 6px}
 .search input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;font:inherit;font-size:14px;color:var(--ink)}
 .search input:focus{outline:2px solid var(--accent);border-color:var(--accent)}
 .count{font-size:12.5px;color:var(--faint);white-space:nowrap}
-.cycles{display:flex;flex-direction:column;gap:10px;margin-top:14px}
-.cyc{display:grid;grid-template-columns:1fr 200px 190px 130px;gap:16px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:15px 17px;cursor:pointer;box-shadow:var(--shadow);text-align:left;width:100%;font:inherit;color:inherit}
-.cyc:hover{border-color:var(--accent)}
-@media(max-width:860px){.cyc{grid-template-columns:1fr;gap:9px}}
-.cyc-id{font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.03em}
-.cyc-n{font-weight:650;font-size:15.5px;margin-top:2px}
-.cyc-m{color:var(--muted);font-size:12px;margin-top:3px}
-.cyc-stats{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--muted)}
-.cyc-stats b{color:var(--ink);font-family:var(--mono);font-size:12px}
-.agbar{display:flex;gap:3px;margin-top:5px}
-.agbar i{flex:1;height:7px;border-radius:2px;background:var(--stub-soft);border:1px solid var(--border)}
-.agbar i.ok{background:var(--ok);border-color:var(--ok)}
-.agbar i.gate{background:var(--gate);border-color:var(--gate)}
-.agbar i.na{background:var(--stub);border-color:var(--stub);opacity:.35}
-.agcap{font-size:10.5px;color:var(--faint);margin-top:4px}
 .pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--surface2);color:var(--muted);white-space:nowrap}
 .pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.gate{background:var(--gate-soft);color:var(--gate)}.pill.fail{background:var(--fail-soft);color:var(--fail)}.pill.run{background:var(--run-soft);color:var(--run)}.pill.muted{background:var(--stub-soft);color:var(--faint)}
 .empty{color:var(--faint);font-size:13.5px;text-align:center;padding:34px}
-.back{display:inline-flex;gap:7px;align-items:center;background:none;border:none;color:var(--accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:6px 0;margin-bottom:2px}
-.dhead{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;margin:2px 0 3px}.dhead h2{font-size:22px;margin:0;letter-spacing:-.015em}
-.kv{font-size:12.5px;color:var(--muted)}.kv b{color:var(--ink);font-family:var(--mono);font-size:12px}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0 4px}
+.back{display:inline-flex;gap:7px;align-items:center;background:none;border:none;color:var(--accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:6px 0}
+
+/* milestone block */
+.ms{margin-top:24px}
+.ms-h{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.ms-t{font-size:16px;font-weight:650;letter-spacing:-.01em;background:none;border:none;padding:0;color:var(--ink);cursor:pointer;font-family:inherit}
+.ms-t:hover{color:var(--accent)}
+.ms-m{font-size:12px;color:var(--muted)}
+.ms-m b{font-family:var(--mono);color:var(--ink)}
+.cov{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:11.5px;color:var(--muted)}
+.covbar{width:110px;height:8px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);overflow:hidden}
+.covbar>i{display:block;height:100%;background:var(--accent)}
+
+/* cycle tiles */
+.cycles{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:11px;margin-top:12px}
+.cyc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;box-shadow:var(--shadow);text-align:left;width:100%;font:inherit;color:inherit;display:flex;flex-direction:column;gap:8px}
+.cyc:hover{border-color:var(--accent)}
+.cyc-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.cyc-id{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.cyc-n{font-weight:650;font-size:15px;margin-top:2px;line-height:1.25}
+.cyc-m{color:var(--muted);font-size:11.5px;margin-top:3px}
+.cyc-row{display:flex;flex-wrap:wrap;gap:5px 14px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px}
+.cyc-row b{font-family:var(--mono);font-size:12px;color:var(--ink)}
+.agbar{display:flex;gap:2.5px}
+.agbar i{flex:1;height:6px;border-radius:2px;background:var(--stub-soft);border:1px solid var(--border)}
+.agbar i.ok{background:var(--ok);border-color:var(--ok)}
+.agbar i.gate{background:var(--gate);border-color:var(--gate)}
+.agbar i.na{background:var(--stub);border-color:var(--stub);opacity:.3}
+.vbar{display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--surface2);border:1px solid var(--border)}
+.vbar span{height:100%}.vbar .p{background:var(--ok)}.vbar .f{background:var(--fail)}.vbar .b{background:var(--gate)}.vbar .n{background:var(--stub);opacity:.35}
+
+/* summary tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin:16px 0 4px}
 .tile{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px 14px;box-shadow:var(--shadow)}
 .tile .n{font-size:23px;font-weight:700;font-family:var(--mono);letter-spacing:-.02em}
 .tile .l{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-top:2px}
 .tile .s{font-size:11.5px;color:var(--muted);margin-top:3px}
+.dhead{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;margin:2px 0 3px}.dhead h2{font-size:22px;margin:0;letter-spacing:-.015em}
+.kv{font-size:12.5px;color:var(--muted)}.kv b{color:var(--ink);font-family:var(--mono);font-size:12px}
 .sec{margin-top:26px}
 .sec h3{font-size:15px;margin:0 0 3px;letter-spacing:-.01em}
 .sec .h-sub{font-size:12.5px;color:var(--muted);margin:0 0 9px}
+
+/* filters */
+.filters{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);margin:12px 0}
+.frow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:5px 0}
+.flab{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);width:58px;flex:none}
+.fchip{font-size:11.5px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 11px;color:var(--muted);cursor:pointer;font-family:inherit;font-weight:600}
+.fchip:hover{border-color:var(--accent);color:var(--accent)}
+.fchip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.fchip .c{opacity:.65;font-weight:500;margin-left:3px}
+
 .tw{overflow-x:auto;border:1px solid var(--border);border-radius:11px;background:var(--surface);box-shadow:var(--shadow)}
-table{width:100%;border-collapse:collapse;font-size:12.8px;min-width:600px}
+table{width:100%;border-collapse:collapse;font-size:12.8px;min-width:620px}
 th{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);background:var(--surface2);white-space:nowrap}
 td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5}
 tr:last-child td{border-bottom:none}
@@ -52,41 +78,43 @@ tr.clk{cursor:pointer}tr.clk:hover td{background:var(--accent-soft)}
 .mono{font-family:var(--mono);font-size:12px}
 .cid{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap}
 .arrowc{color:var(--faint);text-align:right;white-space:nowrap}
-.agrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-@media(max-width:820px){.agrid{grid-template-columns:1fr}}
-.agcard{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:start;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px;cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
-.agcard:hover{border-color:var(--accent)}
-.agcard.dim{opacity:.62}
-.agnum{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:6px;width:24px;height:22px;display:grid;place-items:center}
-.agnum.na{color:var(--faint);background:var(--stub-soft)}
-.agn{font-weight:650;font-size:13.5px;display:block}
-.agi{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:1px;display:block}
-.agr{font-size:12px;color:var(--muted);margin-top:4px;display:block;line-height:1.45}
-.divider{display:flex;align-items:center;gap:10px;margin:20px 0 10px;color:var(--faint);font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
-.divider:after{content:"";flex:1;height:1px;background:var(--border)}
-.layout{display:grid;grid-template-columns:246px 1fr;gap:18px;align-items:start;margin-top:14px}
-@media(max-width:860px){.layout{grid-template-columns:1fr}}
-.nav{position:sticky;top:12px;display:flex;flex-direction:column;gap:4px}
+.chip{font-size:10.5px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;color:var(--muted);display:inline-block;margin:1px 2px 1px 0;white-space:nowrap}
+.chip.ty{background:var(--accent-soft);border-color:var(--accent-soft);color:var(--accent)}
+.chip.ly{background:var(--run-soft);border-color:var(--run-soft);color:var(--run)}
+
+/* trace page */
+.layout{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:start;margin-top:14px}
+@media(max-width:880px){.layout{grid-template-columns:1fr}}
+.nav{position:sticky;top:12px;display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 24px);overflow-y:auto}
 .nav-item{display:flex;align-items:center;gap:8px;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;cursor:pointer;color:var(--ink);font:inherit;font-size:12.5px}
 .nav-item:hover{border-color:var(--accent)}.nav-item.active{background:var(--accent-soft);border-color:var(--accent)}
-.ni-dot{width:9px;height:9px;border-radius:50%;background:var(--stub);flex:none;opacity:.4}.ni-dot.ok{background:var(--ok);opacity:1}.ni-dot.gate{background:var(--gate);opacity:1}
+.ni-dot{width:9px;height:9px;border-radius:50%;background:var(--stub);flex:none;opacity:.35}.ni-dot.ok{background:var(--ok);opacity:1}.ni-dot.gate{background:var(--gate);opacity:1}.ni-dot.fail{background:var(--fail);opacity:1}
 .ni-n{font-family:var(--mono);font-size:10px;color:var(--faint);width:15px;flex:none}
 .ni-a{font-weight:600;flex:1;line-height:1.25}
 .ni-g{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:10px;background:var(--gate-soft);color:var(--gate)}.ni-g.ok{background:var(--ok-soft);color:var(--ok)}
 .nav-lbl{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin:12px 0 3px;padding-left:3px}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
-.p-head{display:flex;align-items:center;gap:10px;margin-bottom:2px;flex-wrap:wrap}.p-head h3{font-size:18px;margin:0}.p-id{color:var(--faint);font-size:12px;font-family:var(--mono)}
-.io{border:1px solid var(--border);border-radius:12px;padding:12px 15px;margin:10px 0}.io.in{background:var(--surface2)}.io.out{background:var(--accent-soft)}
-.io-h{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);margin-bottom:7px}
-.io p{font-size:13.5px;margin:6px 0}.arrow{text-align:center;font-size:11px;color:var(--faint);margin:2px 0}
+.p-head{display:flex;align-items:center;gap:9px;margin-bottom:4px;flex-wrap:wrap}.p-head h3{font-size:18px;margin:0}.p-id{color:var(--faint);font-size:12px;font-family:var(--mono)}
+.io{border:1px solid var(--border);border-radius:12px;padding:12px 15px;margin:9px 0}
+.io.in{background:var(--surface2)}.io.out{background:var(--accent-soft)}
+.io-h{font-size:10.5px;font-weight:700;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.io-h .from{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:2px 9px;font-size:10.5px;color:var(--accent);font-weight:700;cursor:pointer;font-family:inherit}
+.io-h .from:hover{border-color:var(--accent)}
+.io p{font-size:13.5px;margin:6px 0}
+.arrow{text-align:center;font-size:11px;color:var(--faint);margin:2px 0}
+.stepnav{display:flex;justify-content:space-between;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.stepnav button{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 13px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;max-width:48%;text-align:left}
+.stepnav button:hover{border-color:var(--accent);color:var(--accent)}
+.stepnav button[disabled]{opacity:.35;cursor:default}
+.stepnav .lbl{display:block;font-size:9.5px;color:var(--faint);letter-spacing:.07em;text-transform:uppercase;font-weight:700;margin-bottom:1px}
 pre{font-family:var(--mono);font-size:11.6px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 13px;overflow-x:auto;white-space:pre-wrap;margin:6px 0;line-height:1.5}
 .gherkin .kw{color:var(--accent);font-weight:700}
-.sub{font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 3px}.sub2{font-size:11.5px;color:var(--faint);display:block;margin-top:6px;line-height:1.55}
-.chip{font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 9px;color:var(--muted);display:inline-block;margin:2px 2px 0 0}
+.sub{font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 3px}
+.sub2{font-size:11.5px;color:var(--faint);display:block;margin-top:6px;line-height:1.55}
 .sbar{display:flex;height:13px;border-radius:7px;overflow:hidden;background:var(--surface);margin:2px 0 8px;border:1px solid var(--border)}.seg{height:100%}.seg.ok{background:var(--ok)}.seg.gate{background:var(--gate)}.seg.stub{background:var(--stub)}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted)}.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}.dot.ok{background:var(--ok)}.dot.gate{background:var(--gate)}.dot.stub{background:var(--stub)}.dot.fail{background:var(--fail)}
 ol,ul{margin:6px 0;padding-left:20px}li{margin:4px 0;font-size:12.8px}
-.banner{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 9px 9px 0;font-size:12.8px;margin:14px 0;color:var(--ink)}
+.banner{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 9px 9px 0;font-size:12.8px;margin:12px 0;color:var(--ink)}
 .banner.warn{border-left-color:var(--gate);background:var(--gate-soft)}
 .banner.bad{border-left-color:var(--fail);background:var(--fail-soft)}
 .banner b{display:block;margin-bottom:2px}
@@ -94,15 +122,16 @@ ol,ul{margin:6px 0;padding-left:20px}li{margin:4px 0;font-size:12.8px}
 </style></head><body>
 <div class="wrap" id="app"></div>
 <script>
-/* ─────────────────────────────────────────────────────────────────────────
-   THE 12 AGENTS.
-   8 gated agents (1-8) run inside the pipeline behind five human gates.
-   4 async tracks (9-12) run on their own trigger and never block a merge.
-   Pre-flight, Targeted Run and Regression are execution phases, not agents,
-   so they carry no agent number.
-   Every agent is also a standalone skill — the pipeline is one way to run
-   them, not the only way.
-   ───────────────────────────────────────────────────────────────────────── */
+/* ═════════════════════════════════════════════════════════════════════════
+   AQA · Runs Explorer
+   Four levels:  milestone → cycle → test → agent trace.
+   The trace is PER TEST: each agent shows what it received from the agent
+   before it, and what it passed to the agent after it, for that one test.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* 8 gated agents (1-8) behind five human gates, plus 4 async tracks (9-12)
+   that report and never block a merge. Pre-flight, Targeted Run and
+   Regression are execution phases, not agents, so they carry no number. */
 const PHASES=[
  {id:"00-preflight",    a:"Pre-flight",         kind:"check"},
  {id:"01-scope",        a:"Scope Analyst",      kind:"agent", n:1},
@@ -124,336 +153,668 @@ const ASYNC=[
 ];
 const ALL=[...PHASES,...ASYNC];
 const byId=id=>ALL.find(p=>p.id===id);
+const prevPhase=id=>{const i=PHASES.findIndex(p=>p.id===id);return i>0?PHASES[i-1]:null;};
+const nextPhase=id=>{const i=PHASES.findIndex(p=>p.id===id);return i>=0&&i<PHASES.length-1?PHASES[i+1]:null;};
 
-const CART={
-"00-preflight":{in:`<p>The feature spec (a plain request, no tracker key yet):</p><pre>As a shopper I want to save items for later from my cart,\nso I can move them out of the active cart and bring them back.</pre>`,
- out:`<p>Checked prerequisites and probed the app:</p><span class="chip">deps: <b>ok</b></span><span class="chip">app reachable: <b>ok</b></span><span class="chip">"Save for later" control: <b>not built yet</b></span><p class="sub2">Surfaced (not masked): the control does not exist yet, so later phases skip honestly rather than invent selectors.</p>`},
-"01-scope":{in:`<p>The spec. No epic to traverse, so the analyst decomposes it into candidate behaviours and classifies each.</p>`,
- out:`<div class="sbar"><span class="seg ok" style="width:75%"></span><span class="seg gate" style="width:12.5%"></span><span class="seg stub" style="width:12.5%"></span></div><div class="legend"><span><i class="dot ok"></i>In scope 6</span><span><i class="dot gate"></i>Deferred 1</span><span><i class="dot stub"></i>Out 1</span> · confidence 60%</div>
- <div class="sub">In scope</div><table><thead><tr><th>Behaviour</th><th>Area</th></tr></thead><tbody><tr><td>"Save for later" moves an item out of the active cart</td><td>cart</td></tr><tr><td>Saved items appear in a "Saved" list</td><td>cart</td></tr><tr><td>"Move to cart" returns a saved item</td><td>cart</td></tr><tr><td>Saved items persist across sessions</td><td>cart</td></tr><tr><td>Saved items are excluded from the cart total</td><td>cart</td></tr><tr><td>Remove a saved item</td><td>cart</td></tr></tbody></table>
- <div class="sub">Deferred</div><p>Saved-item price updates when the catalogue price changes — needs a pricing event, not a UI test.</p><div class="sub">Out of scope</div><p>Cart persistence storage internals → performance track.</p><p class="sub2">Confidence 0.60 — clear behaviour, but the control isn't built and no selectors exist to verify. Forces the CP1 review.</p>`},
-"02-architecture":{in:`<p>The classified scope (6 in-scope behaviours, 1 deferred).</p>`,
- out:`<p>One objective per behaviour with a positive / negative / edge split.</p><table><thead><tr><th>Objective</th><th>+/–/edge</th></tr></thead><tbody><tr><td>Save for later moves the item</td><td><span class="pill ok">positive</span></td></tr><tr><td>Move to cart returns it</td><td><span class="pill ok">positive</span></td></tr><tr><td>Saved list persists across sessions</td><td><span class="pill ok">positive</span></td></tr><tr><td>Saved items excluded from total</td><td><span class="pill ok">positive</span></td></tr><tr><td>Save-for-later on an out-of-stock item is blocked</td><td><span class="pill fail">negative</span></td></tr><tr><td>Save the last cart item (cart goes empty)</td><td><span class="pill gate">edge</span></td></tr><tr><td>Remove a saved item</td><td><span class="pill muted">lifecycle</span></td></tr></tbody></table><p class="sub2"><b>Pilot:</b> save-for-later + move-to-cart.</p>`},
-"03-case-design":{in:`<p>The objectives + the pos/neg/edge plan.</p>`,
- out:`<p>A co-located Gherkin feature — <span class="mono">tests/features/cart-save-for-later.feature</span> — stakeholder-readable, each scenario doubling as a test case.</p>
- <pre class="gherkin"><span class="kw">Feature:</span> Save cart items for later\n\n  <span class="kw">Background:</span>\n    <span class="kw">Given</span> I am signed in to Acme Shop\n    <span class="kw">And</span> I have two items in my cart\n\n  <span class="kw">Scenario:</span> AQA-201 Save an item for later\n    <span class="kw">When</span> I choose "Save for later" on an item\n    <span class="kw">Then</span> it moves to my "Saved" list and leaves the active cart\n\n  <span class="kw">Scenario:</span> AQA-202 Move a saved item back to the cart\n  <span class="kw">Scenario:</span> AQA-203 Saved items persist after I sign out and back in\n  <span class="kw">Scenario:</span> AQA-204 Saved items are not counted in the cart total\n  <span class="kw">Scenario:</span> AQA-205 Saving an out-of-stock item is blocked\n  <span class="kw">Scenario:</span> AQA-206 Saving the last cart item leaves an empty cart cleanly\n  <span class="kw">Scenario:</span> AQA-207 Remove a saved item</pre>
- <div class="sub">Tags — auto-stamped, pick by area / type</div><p><span class="chip">@area:cart</span><span class="chip">@type:happy ×4</span><span class="chip">@type:negative ×1</span><span class="chip">@type:edge ×1</span><span class="chip">@type:lifecycle ×1</span></p>
- <div class="sub2">~90% of the UI surface covered; the price-change-on-saved-item behaviour is deferred (needs a pricing event). Open questions at CP2: is there a saved-item cap? do saved items reserve stock?</div>`},
+
+/* ── per-test trace builders ────────────────────────────────────────────
+   Each builder renders ONE agent for ONE test. The input is always framed
+   as what arrived from the agent before it, so the chain is explicit.
+   A test may override any agent via test.trace[phaseId].
+   ──────────────────────────────────────────────────────────────────────── */
+const NR=(why)=>`<div class="banner warn"><b>Not reached for this test</b>${why}</div>`;
+const rows=(hdr,rs)=>`<table><thead><tr>${hdr.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rs.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+const stopped=t=>{const c=CYCLES.find(x=>x.id===t.cycle)||{};return c.stopReason||"The cycle paused at a human gate before this agent ran.";};
+const manual=t=>t.source==="manual";
+
+const BUILD={
+"00-preflight":t=>({
+  in:`<p>The written intent for this one flow, handed in from <b>${esc(t.spec.source)}</b>${t.spec.ref?` (<span class="mono">${esc(t.spec.ref)}</span>)`:""}.</p><pre>${esc(t.spec.text)}</pre>`,
+  out:`<p>Two jobs: reconcile the written intent against every place it is written down, then probe the <b>running app</b> for the controls this flow needs.</p>
+   <div class="sub">Where the intent came from</div>${rows(["Source","Says","Agrees?"],(t.sources||[]).map(s=>[`<span class="mono">${esc(s.from)}</span>`,esc(s.says),s.agrees?'<span class="pill ok">yes</span>':'<span class="pill gate">'+esc(s.conflict||"differs")+'</span>']))}
+   <div class="sub">What the running app actually has</div>${rows(["Looked for","Found","Evidence"],(t.probe||[]).map(x=>[esc(x.what),x.found?'<span class="pill ok">found</span>':(x.found===false?'<span class="pill fail">missing</span>':'<span class="pill gate">ambiguous</span>'),`<span class="mono">${esc(x.evidence)}</span>`]))}
+   ${t.probeNote?`<div class="banner ${t.probeSev||"warn"}"><b>${esc(t.probeTitle||"Surfaced, not masked")}</b>${t.probeNote}</div>`:""}`}),
+
+"01-scope":t=>({
+  in:`<p>Pre-flight's two answers for this flow: the reconciled intent, and what the running app actually exposes.</p>
+   <pre>intent  : ${esc(t.spec.text)}
+sources : ${(t.sources||[]).map(s=>s.from).join(", ")||"—"}
+probe   : ${(t.probe||[]).map(x=>x.what+" = "+(x.found?"found":x.found===false?"missing":"ambiguous")).join(" · ")||"—"}</pre>`,
+  out:`<p>Decided whether this behaviour is worth testing, and said how sure it is.</p>
+   ${rows(["Verdict","Confidence","Why"],[[`<span class="pill ${t.scope.in?"ok":"gate"}">${t.scope.in?"in scope":"deferred"}</span>`,`<span class="mono">${esc(t.scope.confidence)}</span>`,esc(t.scope.why)]])}
+   ${t.scope.finding?`<div class="banner bad"><b>${esc(t.scope.finding.id)} · carried forward</b>${t.scope.finding.text}</div>`:""}
+   <p class="sub2">Read-only. The analyst never writes a case — it decides what deserves one.</p>`}),
+
+"02-architecture":t=>({
+  in:`<p>The Scope Analyst's verdict for this behaviour, at confidence <span class="mono">${esc(t.scope.confidence)}</span>${t.scope.finding?`, with finding <span class="mono">${esc(t.scope.finding.id)}</span> attached`:""}.</p>`,
+  out:`<p>Turned the behaviour into one testable objective and routed it to a track.</p>
+   ${rows(["Objective","Type","Track"],[[esc(t.objective),`<span class="chip ty">${esc(t.type)}</span>`,`<span class="chip ly">${esc(t.layer)}</span>`]])}
+   <p class="sub2">${esc(t.archNote||"One objective per behaviour. No cases and no code at this stage — that is the next two agents' work.")}</p>`}),
+
+"03-case-design":t=>({
+  in:`<p>The objective: <b>${esc(t.objective)}</b>, typed <span class="chip ty">${esc(t.type)}</span> on the <span class="chip ly">${esc(t.layer)}</span> track.</p>`,
+  out:t.gherkin
+   ? `<p>Written as a Gherkin scenario — stakeholder-readable, and doubling as the manual test case.</p>
+      <pre class="gherkin">${t.gherkin}</pre>
+      <div class="sub">Tags — auto-stamped</div><p><span class="chip">@area:${esc(t.area)}</span><span class="chip">@type:${esc(t.type)}</span>${t.layer?`<span class="chip">@layer:${esc(t.layer)}</span>`:""}</p>
+      ${t.tagNote?`<div class="banner bad"><b>Tag engine defect</b>${t.tagNote}</div>`:""}`
+   : `<p>Expressed as an API case rather than Gherkin — there is no UI step to read.</p><pre>${esc(t.apiCase||"—")}</pre>
+      <div class="sub">Tags</div><p><span class="chip">@area:${esc(t.area)}</span><span class="chip">@type:${esc(t.type)}</span><span class="chip">@layer:${esc(t.layer)}</span></p>`}),
+
+"3b-publish":t=>({
+  in:`<p>The approved case for this flow${t.scope.finding?`, plus finding <span class="mono">${esc(t.scope.finding.id)}</span> from scope`:""}.</p>`,
+  out:(t.reached||[]).includes("3b-publish")
+   ? `<p><b>Dry-run.</b> The payload was built and held. <span class="pill ok">sent = 0</span></p>
+      <pre>POST \${TRACKER_BASE_URL}/api/testcases
+{
+  "summary": "${esc(t.id)} ${esc(t.title)}",
+  "labels":  ["area:${esc(t.area)}","type:${esc(t.type)}","layer:${esc(t.layer)}","aqa-generated"],
+  "expected": "${esc(t.expected||t.objective)}"
+}</pre>
+      <p class="sub2">Nothing is created in a tracker until a human clears the gate.</p>`
+   : NR(stopped(t))}),
+
+"04-generate":t=>({
+  in:`<p>The approved case, once CP2 is cleared.</p>`,
+  out:(t.reached||[]).includes("04-generate")
+   ? `<p>Step definitions written against the shared page objects.</p><pre>${esc(t.gen||"—")}</pre>`
+   : NR(stopped(t))}),
+
+"05-targeted-run":t=>({
+  in:`<p>The runnable spec for this case alone.</p>${t.exec?`<pre>${esc(t.exec.cmd)}</pre>`:""}`,
+  out:t.exec
+   ? `<p>${manual(t)?"<b>Executed by hand</b> against the running app — the pipeline had already stopped at the gate, so this evidence is a human's, not an agent's.":"Ran this one case against the live app."}</p>
+      ${rows(["Step","Observed"],t.exec.steps.map(s=>[esc(s[0]),`<span class="mono">${esc(s[1])}</span>`]))}
+      <div class="banner ${VER(t.verdict)==="p"?"":"bad"}"><b>${esc(t.verdict)}</b>${esc(t.exec.conclusion)}</div>`
+   : NR(stopped(t))}),
+
+"06-self-heal":t=>({
+  in:`<p>${t.heal?"The failure this case produced on its first run, handed over for triage.":(VER(t.verdict)==="f"?"The failure from the targeted run.":"Nothing failed on this case, so there is nothing to triage.")}</p>`,
+  out:(t.reached||[]).includes("06-self-heal")
+   ? (t.heal||`<p><span class="pill ok">no action</span> This case passed. Nothing healed, nothing filed.</p>`)
+   : NR(stopped(t))}),
+
+"07-regression":t=>({
+  in:`<p>The whole suite, not just this case.</p>`,
+  out:(t.reached||[]).includes("07-regression")
+   ? `<p>${esc(t.regression||"—")}</p><p class="sub2">This case's own result is shown above; regression is here to prove it did not break anything else.</p>`
+   : NR(stopped(t))}),
+
+"08-review":t=>({
+  in:`<p>The generated test for this case, read against <span class="mono">conventions.md</span>.</p>`,
+  out:(t.reached||[]).includes("08-review")
+   ? (t.review||`<p><span class="pill ok">0 findings</span></p>`)
+   : NR(stopped(t))}),
+
+"09-finalise":t=>({
+  in:`<p>Everything this case produced.</p>`,
+  out:(t.reached||[]).includes("09-finalise")
+   ? `<p>Feature Registry entry updated.</p><pre>${esc(t.kb||"—")}</pre>`
+   : NR(stopped(t))}),
+
+"a09-performance":t=>({
+  in:`<p>Declared budgets for the steps this flow touches, plus the running app. Budgets are written down first, so a breach is a fact rather than an opinion.</p>${t.perf?`<pre>${esc(t.perf.budgets)}</pre>`:""}`,
+  out:t.perf
+   ? `<p><b>${esc(t.perf.headline)}</b></p>${rows(["Step","n","p50","p95","Budget","Verdict"],t.perf.rows.map(r=>[`<span class="mono">${esc(r[0])}</span>`,`<span class="mono">${esc(r[1])}</span>`,`<span class="mono">${esc(r[2])}</span>`,`<span class="mono">${esc(r[3])}</span>`,`<span class="mono">${esc(r[4])}</span>`,r[5]?'<span class="pill fail">breach</span>':'<span class="pill ok">ok</span>']))}
+      <p class="sub2">Report-only. Never gates a merge, and never files known non-determinism as a bug.</p>`
+   : `<div class="banner warn"><b>Not configured for this flow</b>No budget is declared for these steps, so there is nothing to measure against. Reported as not-run, never as a pass.</div>`}),
+
+"a10-design-parity":t=>({
+  in:`<p>Two runnable things: a design prototype, and the live app, driven through the same route and state.</p>`,
+  out:t.parity
+   ? t.parity
+   : `<div class="banner warn"><b>Not configured for this target</b>No prototype source is connected, so there is nothing to compare the built app against. The agent refuses to emit a green result it did not earn.</div>
+      <p class="sub">What it would do</p><ul>
+      <li>Drive prototype and live app through the same state, capture side-by-side screenshots.</li>
+      <li>Compare visual/layout, flow, copy, and states — empty, error, loading.</li>
+      <li>Raise <b>design-team</b> tickets, never product bugs, and never block the functional pipeline.</li></ul>`}),
+
+"a11-ai-eval":t=>({
+  in:`<p>A golden dataset and a trace endpoint — LangGraph, Phoenix, LangSmith, or any OpenTelemetry-compatible tracer. The organisation plugs in whichever it already runs.</p>`,
+  out:t.aieval
+   ? t.aieval
+   : `<div class="banner warn"><b>Not applicable to this flow</b>This flow has no AI assistant and no trace source, so there is nothing to score. Skipped honestly rather than reported as passing.</div>
+      <p class="sub">What it would do</p><ol>
+      <li><b>Ask</b> each golden query.</li><li><b>Fetch the trace</b> — answer, tool calls, span statuses, latency.</li>
+      <li><b>Score twice</b> — LLM-as-judge (correctness, faithfulness, coherence, relevance) plus deterministic checks.</li>
+      <li><b>Aggregate</b>, compare to baseline, flag regressions.</li></ol>
+      <p class="sub2">Quality is a score, not a pass/fail. Never gates a merge.</p>`}),
+
+"a12-drift":t=>({
+  in:`<p>The Feature Registry anchors for this flow — what was true last time anyone looked.</p>${t.drift?`<pre>${esc(t.drift.anchors)}</pre>`:""}`,
+  out:t.drift
+   ? `<p><b>${esc(t.drift.headline)}</b></p>${rows(["Anchor","Status","Evidence"],t.drift.rows.map(r=>[`<span class="mono">${esc(r[0])}</span>`,r[1]==="verified"?'<span class="pill ok">verified</span>':r[1]==="drifted"?'<span class="pill fail">drifted</span>':'<span class="pill muted">not checked</span>',esc(r[2])]))}
+      ${t.drift.note?`<div class="banner"><b>${esc(t.drift.noteTitle||"Note")}</b>${t.drift.note}</div>`:""}`
+   : `<div class="banner warn"><b>No registry entry for this flow yet</b>Drift can only re-verify anchors that were recorded. Nothing recorded means nothing to re-check — reported as not-run.</div>`}),
 };
-const BLOCKED=`<div class="banner warn"><b>Not reached</b>This run paused at CP2 because the "Save for later" control isn't built yet, so generation/run would have to invent selectors. Shown as it will run once the feature ships.</div>`;
-for(const id of ["3b-publish","04-generate","05-targeted-run","06-self-heal","07-regression","08-review","09-finalise"]) CART[id]={in:BLOCKED,out:BLOCKED};
 
-/* ── async track content, shared by the completed demo runs ─────────────── */
-const ASYNC_DEMO={
-"a09-performance":{in:`<p>Run history and per-step durations from the configured metrics API, plus a <b>declared budget per step</b>. Budgets are written down before the run, so a breach is a fact rather than a judgement call.</p>
- <pre>checkout.submit 800ms · cart.add 300ms · search.query 400ms
-catalogue.list 250ms · auth.login 400ms</pre>`,
- out:`<p><b>One budget breach. Reported with evidence; nothing gated.</b></p>
- <table><thead><tr><th>Step</th><th>n</th><th>p50</th><th>p95</th><th>Budget</th><th>Verdict</th></tr></thead><tbody>
- <tr><td class="mono">checkout.submit</td><td>140</td><td class="mono">610</td><td class="mono">1180</td><td class="mono">800</td><td><span class="pill fail">breach</span></td></tr>
- <tr><td class="mono">search.query</td><td>140</td><td class="mono">180</td><td class="mono">340</td><td class="mono">400</td><td><span class="pill ok">ok</span></td></tr>
- <tr><td class="mono">cart.add</td><td>140</td><td class="mono">95</td><td class="mono">210</td><td class="mono">300</td><td><span class="pill ok">ok</span></td></tr>
- <tr><td class="mono">catalogue.list</td><td>140</td><td class="mono">70</td><td class="mono">160</td><td class="mono">250</td><td><span class="pill ok">ok</span></td></tr>
- <tr><td class="mono">auth.login</td><td>140</td><td class="mono">140</td><td class="mono">260</td><td class="mono">400</td><td><span class="pill ok">ok</span></td></tr>
- </tbody></table>
- <div class="banner"><b>PERF-01 · raised with evidence</b>checkout.submit p95 1180ms against a declared 800ms budget across 140 samples. Correlated with the logs for the same window. Filed as a bug because the budget was declared in advance — not because a number looked large.</div>
- <p class="sub2"><b>Report-only.</b> This track never gates a merge, and never files known non-determinism as a bug: runtime is driven by load × iterations, not one dimension alone. Output: <span class="mono">out/performance-&lt;date&gt;.json</span></p>`},
-
-"a10-design-parity":{in:`<p>Two runnable things: a <b>design prototype</b> (a prototype URL, a Storybook, or a deployed design build) and the <b>live app</b>, driven through the same route and state.</p>`,
- out:`<div class="banner warn"><b>NOT CONFIGURED — reported as not-run, not as pass</b>No prototype source is connected for this target, so there is nothing to compare the built app against. The agent refuses to emit a green result it did not earn.</div>
- <p class="sub">What it does once a prototype is connected</p>
- <ul>
- <li>Drives prototype and live app through the <b>same route and state</b>, captures side-by-side screenshots.</li>
- <li>Compares across four axes — <b>visual / layout</b>, <b>flow</b>, <b>copy</b>, and <b>states</b> (empty, error, loading).</li>
- <li>Raises tickets for the <b>design team</b>, never product bugs, and never blocks the functional pipeline.</li>
- <li>Flags meaningful deviations only. A human triages each diff as regression versus deliberate evolution; not every pixel diff is a defect.</li>
- </ul>
- <p class="sub2">Dry-run by default. Output: <span class="mono">out/design-parity-&lt;date&gt;.json</span> (categorised diffs plus evidence).</p>`},
-
-"a11-ai-eval":{in:`<p>A golden dataset (a human-approved answer key) and a trace endpoint — <b>LangGraph, Phoenix, LangSmith, or any OpenTelemetry-compatible tracer</b>. The organisation plugs in whichever it already runs.</p>`,
- out:`<div class="banner warn"><b>NOT APPLICABLE TO THIS TARGET — reported as not-run</b>This app exposes no AI assistant endpoint and no trace source, so there is nothing to score. Skipped honestly rather than reported as passing.</div>
- <p class="sub">What it does against an AI app</p>
- <ol>
- <li><b>Ask</b> — send each golden query to the assistant.</li>
- <li><b>Fetch the trace</b> — the final answer, every tool call with args and result, span statuses, latency.</li>
- <li><b>Score two ways</b> — LLM-as-judge on correctness, faithfulness, coherence and relevance (1–5), plus deterministic checks: expected tools present, no forbidden tools, no errored spans, latency inside budget.</li>
- <li><b>Aggregate</b> a scorecard, compare against baseline, flag regressions.</li>
- </ol>
- <p class="sub2">Quality is a <b>score, not a pass/fail</b>. A low score is surfaced, never auto-filed as a product bug, and this track never gates a merge. Adversarial cases test LLM robustness, not infrastructure. Never fabricates a trace or a score. Output: <span class="mono">out/ai-evals-&lt;date&gt;.json</span></p>`},
-
-"a12-drift":{in:`<p>The Feature Registry entries for this feature — the git-versioned record of what was true about the app last time anyone looked.</p>
- <pre>truth:
-  ui_routes: [/cart, /checkout, /order/confirmation]
-  api: [POST /api/orders]
-verified_against_live: 2026-08-20</pre>`,
- out:`<p><b>12 anchors checked · 12 verified · 0 drifted.</b> Registry stamped with today's date.</p>
- <table><thead><tr><th>Anchor</th><th>Status</th><th>Evidence</th></tr></thead><tbody>
- <tr><td class="mono">ui_route /cart</td><td><span class="pill ok">verified</span></td><td class="mono">HTTP 200</td></tr>
- <tr><td class="mono">ui_route /checkout</td><td><span class="pill ok">verified</span></td><td class="mono">HTTP 200</td></tr>
- <tr><td class="mono">ui_route /order/confirmation</td><td><span class="pill ok">verified</span></td><td class="mono">HTTP 200</td></tr>
- <tr><td class="mono">POST /api/orders</td><td><span class="pill ok">verified</span></td><td class="mono">201 · shape unchanged</td></tr>
- </tbody></table>
- <div class="banner"><b>What drift means here</b>On a clean re-verify the entry is stamped with today's date. If reality had changed — a route gone, an element renamed, an API shape different — the anchor would be <b>flagged for a human to judge</b>: product bug, or stale registry? This track never decides that itself, and never raises a product bug on its own.</div>
- <p class="sub2">Triggered by an app-repo change or a deploy. Output: <span class="mono">out/drift-&lt;date&gt;.json</span> (checked, verified, drifted).</p>`},
-};
-
-const RUNS=[
- {runId:"r-chk-9f", cycle:"CY-2609-A", epicKey:"AQA-EP-CHECKOUT", name:"Checkout hardening", source:"tracker", started:"2026-09-01 10:12", status:"complete", def:"01-scope", awaiting:null,
-  done:[...PHASES.map(p=>p.id),"a09-performance","a12-drift"], na:["a10-design-parity","a11-ai-eval"],
-  counts:{"00-preflight":"4 checks ok","01-scope":"12 in · 2 deferred · 3 out · conf 84%","02-architecture":"9 objectives · pilot: checkout","03-case-design":"1 feature · 4 scenarios","3b-publish":"4 test cases (dry-run)","04-generate":"1 step-def · 4 specs","05-targeted-run":"4 ran · 4 passed","06-self-heal":"0 healed · 0 bugs","07-regression":"140 / 140 passed","08-review":"3 findings · 0 blocking","09-finalise":"1 KB entry",
-   "a09-performance":"5 steps · 1 budget breach","a10-design-parity":"not configured","a11-ai-eval":"not applicable","a12-drift":"12 checked · 12 verified"}},
-
- {runId:"r-srch-2a", cycle:"CY-2609-A", epicKey:"AQA-EP-SEARCH", name:"Search relevance", source:"tracker", started:"2026-09-01 11:40", status:"complete", def:"01-scope", awaiting:null,
-  done:[...PHASES.map(p=>p.id),"a09-performance","a12-drift"], na:["a10-design-parity","a11-ai-eval"],
-  counts:{"00-preflight":"4 checks ok","01-scope":"8 in · 1 deferred · 2 out","02-architecture":"6 objectives · pilot: search","03-case-design":"1 feature · 3 scenarios","3b-publish":"3 test cases (dry-run)","04-generate":"1 step-def · 3 specs","05-targeted-run":"3 ran · 2 pass · 1 fail","06-self-heal":"1 healed · 0 bugs","07-regression":"140 / 140 passed","08-review":"2 findings · 0 blocking","09-finalise":"1 KB entry",
-   "a09-performance":"5 steps · 1 budget breach","a10-design-parity":"not configured","a11-ai-eval":"not applicable","a12-drift":"12 checked · 12 verified"}},
-
- {runId:"r-acct-4b", cycle:"CY-2609-A", epicKey:"AQA-EP-ACCOUNT", name:"Account & profile", source:"tracker", started:"2026-08-31 16:20", status:"complete", def:"01-scope", awaiting:null,
-  done:[...PHASES.map(p=>p.id),"a12-drift"], na:["a09-performance","a10-design-parity","a11-ai-eval"],
-  counts:{"00-preflight":"4 checks ok","01-scope":"5 in · 1 out","02-architecture":"4 objectives","03-case-design":"1 feature · 3 scenarios","3b-publish":"3 test cases","04-generate":"1 step-def","05-targeted-run":"3 ran · 3 passed","06-self-heal":"0 healed","07-regression":"140 / 140 passed","08-review":"0 findings","09-finalise":"1 KB entry",
-   "a09-performance":"not configured","a10-design-parity":"not configured","a11-ai-eval":"not applicable","a12-drift":"12 checked · 12 verified"}},
-
- {runId:"r-cart-7c", cycle:"CY-2609-B", epicKey:"spec:cart-save-for-later", name:"Save cart items for later", source:"feature spec", started:"2026-09-02 09:05", status:"paused", def:"03-case-design", awaiting:"CP2", rich:CART,
-  done:["00-preflight","01-scope","02-architecture","03-case-design"], na:["a09-performance","a10-design-parity","a11-ai-eval","a12-drift"],
-  counts:{"00-preflight":"prereqs ok · control not built","01-scope":"6 in · 1 deferred · 1 out · conf 60%","02-architecture":"7 objectives · pilot: cart","03-case-design":"1 feature · 7 scenarios (tagged)",
-   "a09-performance":"not configured","a10-design-parity":"not configured","a11-ai-eval":"not applicable","a12-drift":"not configured"}},
+/* ── Demo data ───────────────────────────────────────────────────────────
+   A worked example against a fictional "Acme Shop". Two milestones: one
+   closed regression pass where every agent ran end to end, and one open
+   milestone where the feature under test does not exist yet and the
+   pipeline stops honestly at CP2.
+   Replace this block with your own cycle data.
+   ──────────────────────────────────────────────────────────────────────── */
+const MILESTONES=[
+ {id:"MS-24", name:"Release 2.4", owner:"qa-lead", window:"25 Aug → 05 Sep 2026", status:"complete",
+  note:"The regression pass that shipped 2.4. Every gated agent ran to a knowledge-base entry, with the performance and drift tracks running alongside."},
+ {id:"MS-25", name:"Release 2.5", owner:"qa-lead", window:"01 Sep → 19 Sep 2026", status:"in progress",
+  note:"In flight. The first cycle stopped at CP2 because the feature it was asked to test has not been built yet."},
 ];
 
-/* ── CYCLES — a cycle groups the runs done against one target in one pass ── */
 const CYCLES=[
- {id:"CY-2609-A", name:"Acme Shop · Release regression", target:"Acme Shop · staging", started:"2026-09-01 10:12",
-  status:"complete", awaiting:null, runs:["r-chk-9f","r-srch-2a","r-acct-4b"],
-  note:"Three epics carried all the way through all five gates to a knowledge-base entry, with the performance and drift tracks running alongside.",
-  cases:[
-   {id:"AQA-101", title:"Complete a card checkout",                       type:"happy",     area:"checkout", state:"generated · executed", phase:"05-targeted-run", verdict:"pass", run:"r-chk-9f"},
-   {id:"AQA-102", title:"An expired card is rejected",                    type:"negative",  area:"checkout", state:"generated · executed", phase:"05-targeted-run", verdict:"pass", run:"r-chk-9f"},
-   {id:"AQA-103", title:"The minimum order value is enforced",            type:"edge",      area:"checkout", state:"generated · executed", phase:"05-targeted-run", verdict:"pass", run:"r-chk-9f"},
-   {id:"AQA-104", title:"Leaving checkout with unsaved address warns me", type:"guard",     area:"checkout", state:"generated · executed", phase:"05-targeted-run", verdict:"pass", run:"r-chk-9f"},
-   {id:"AQA-301", title:"Search returns relevant results for a known term",type:"happy",    area:"search",   state:"generated · executed", phase:"05-targeted-run", verdict:"pass", run:"r-srch-2a"},
-   {id:"AQA-302", title:"Search with no results shows the empty state",   type:"edge",      area:"search",   state:"generated · executed", phase:"05-targeted-run", verdict:"pass", run:"r-srch-2a"},
-   {id:"AQA-303", title:"Search ranking is stable across repeats",        type:"edge",      area:"search",   state:"generated · executed", phase:"06-self-heal",    verdict:"failed → self-healed", run:"r-srch-2a"},
-   {id:"AQA-401", title:"Update a profile display name",                  type:"happy",     area:"account",  state:"generated · executed", phase:"05-targeted-run", verdict:"pass", run:"r-acct-4b"},
-   {id:"AQA-402", title:"An invalid email is rejected",                   type:"negative",  area:"account",  state:"generated · executed", phase:"05-targeted-run", verdict:"pass", run:"r-acct-4b"},
-   {id:"AQA-403", title:"Deleting an account is confirmed first",         type:"lifecycle", area:"account",  state:"generated · executed", phase:"05-targeted-run", verdict:"pass", run:"r-acct-4b"},
-  ],
-  findings:[
-   {id:"PERF-01",   t:"checkout.submit p95 1180ms against a declared 800ms budget", sev:"medium", who:"pipeline", phase:"a09-performance", run:"r-chk-9f"},
-   {id:"HEAL-01",   t:"Search ranking spec was a test defect, healed in 1 cycle — not filed as a product bug", sev:"info", who:"pipeline", phase:"06-self-heal", run:"r-srch-2a"},
-   {id:"REVIEW-01", t:"Three review findings on generated tests, none blocking", sev:"low", who:"pipeline", phase:"08-review", run:"r-chk-9f"},
-  ]},
+ {id:"CY-24-R1", milestone:"MS-24", name:"Release regression", kind:"regression",
+  target:"Acme Shop · staging", source:"tracker · AQA-EP-*",
+  started:"2026-09-01 10:12", ended:"2026-09-01 16:40", status:"complete", awaiting:null,
+  note:"Three epics — checkout, search and account — carried all the way through all five gates. One spec failed on first run and was healed as a test defect rather than filed as a product bug.",
+  ran:["00-preflight","01-scope","02-architecture","03-case-design","3b-publish","04-generate","05-targeted-run","06-self-heal","07-regression","08-review","09-finalise","a09-performance","a12-drift"],
+  na:["a10-design-parity","a11-ai-eval"]},
 
- {id:"CY-2609-B", name:"Acme Shop · Cart save for later", target:"Acme Shop · staging", started:"2026-09-02 09:05",
-  status:"paused", awaiting:"CP2", runs:["r-cart-7c"],
-  note:"The control is not built yet. Pre-flight said so, and every later phase skipped honestly instead of inventing selectors. This is the cycle that shows what the pipeline does when the answer is \"not yet\".",
-  cases:[
-   {id:"AQA-201", title:"Save an item for later",                          type:"happy",     area:"cart", state:"authored", phase:"03-case-design", verdict:"blocked — control not built"},
-   {id:"AQA-202", title:"Move a saved item back to the cart",              type:"happy",     area:"cart", state:"authored", phase:"03-case-design", verdict:"blocked — control not built"},
-   {id:"AQA-203", title:"Saved items persist after sign out and back in",  type:"happy",     area:"cart", state:"authored", phase:"03-case-design", verdict:"blocked"},
-   {id:"AQA-204", title:"Saved items are not counted in the cart total",   type:"happy",     area:"cart", state:"authored", phase:"03-case-design", verdict:"blocked"},
-   {id:"AQA-205", title:"Saving an out-of-stock item is blocked",          type:"negative",  area:"cart", state:"authored", phase:"03-case-design", verdict:"blocked"},
-   {id:"AQA-206", title:"Saving the last cart item leaves an empty cart cleanly", type:"edge", area:"cart", state:"authored", phase:"03-case-design", verdict:"blocked"},
-   {id:"AQA-207", title:"Remove a saved item",                             type:"lifecycle", area:"cart", state:"authored", phase:"03-case-design", verdict:"blocked"},
-  ],
-  findings:[
-   {id:"PRE-01", t:"\"Save for later\" control does not exist in the build under test — surfaced, not masked", sev:"blocking", who:"pipeline", phase:"00-preflight"},
-   {id:"SCOPE-01", t:"Scope confidence 0.60 — no selectors exist to verify against, so CP1 review is forced", sev:"info", who:"pipeline", phase:"01-scope"},
-  ]},
+ {id:"CY-25-C1", milestone:"MS-25", name:"Cart save for later", kind:"new feature",
+  target:"Acme Shop · staging", source:"free-text spec",
+  started:"2026-09-02 09:05", ended:null, status:"paused", awaiting:"CP2",
+  note:"Pre-flight found that the control does not exist in the build under test. Every later phase skipped honestly instead of inventing a selector. This is what the pipeline does when the answer is \"not yet\".",
+  stopReason:'Pre-flight found no <span class="mono">"Save for later"</span> control in the build under test, and scope confidence came back at <b>0.60</b>. The cycle is holding at <b>CP2</b> for a human to decide whether to wait for the feature or drop the cycle.',
+  ran:["00-preflight","01-scope","02-architecture","03-case-design"],
+  na:["a09-performance","a10-design-parity","a11-ai-eval","a12-drift"]},
 ];
+
+const SRC_TRACKER=[
+ {from:"tracker · AQA-EP-CHECKOUT", says:"Epic and its child stories, with acceptance criteria.", agrees:true},
+ {from:"docs · checkout runbook", says:"Adds a minimum-order rule the epic never mentions.", agrees:false, conflict:"extra rule"},
+ {from:"the running app", says:"Truth. Probed directly rather than trusted.", agrees:true},
+];
+const SRC_SPEC=[
+ {from:"free-text spec", says:"As a shopper I want to save items for later from my cart.", agrees:true},
+ {from:"the running app", says:"Truth. Probed directly rather than trusted.", agrees:true},
+];
+
+const PERF_CHECKOUT={
+ budgets:`checkout.submit 800ms · cart.add    300ms
+search.query    400ms · auth.login  400ms
+catalogue.list  250ms`,
+ headline:"One budget breach across 140 samples. Raised with evidence; nothing gated.",
+ rows:[
+  ["checkout.submit","140","610","1180","800",true],
+  ["search.query","140","180","340","400",false],
+  ["cart.add","140","95","210","300",false],
+  ["catalogue.list","140","70","160","250",false],
+  ["auth.login","140","140","260","400",false],
+ ]};
+const DRIFT_CHECKOUT={
+ anchors:`ui_routes: [/cart, /checkout, /order/confirmation]
+api: [POST /api/orders]
+verified_against_live: 2026-08-20`,
+ headline:"4 anchors checked · 4 verified · 0 drifted. Registry stamped with today's date.",
+ rows:[
+  ["ui_route /cart","verified","HTTP 200"],
+  ["ui_route /checkout","verified","HTTP 200"],
+  ["ui_route /order/confirmation","verified","HTTP 200"],
+  ["POST /api/orders","verified","201 · shape unchanged"],
+ ],
+ noteTitle:"What drift means here",
+ note:"On a clean re-verify the entry is stamped with today's date. Had reality changed — a route gone, an element renamed, an API shape different — the anchor would be <b>flagged for a human to judge</b>: product bug, or stale registry? This track never decides that itself, and never raises a product bug on its own."};
+
+/* every gated agent ran in the regression cycle */
+const FULL=["00-preflight","01-scope","02-architecture","03-case-design","3b-publish","04-generate","05-targeted-run","06-self-heal","07-regression","08-review","09-finalise"];
+const R=o=>Object.assign({
+  cycle:"CY-24-R1", layer:"UI", source:"pipeline", sources:SRC_TRACKER, reached:FULL,
+  na:["a10-design-parity","a11-ai-eval"],
+  scope:{in:true, confidence:"0.84", why:"Acceptance criteria are explicit and every control was found in the running app."},
+  regression:"140 / 140 specs passed. Nothing else moved.",
+  perf:PERF_CHECKOUT, drift:DRIFT_CHECKOUT,
+  kb:`feature: checkout\ntruth:\n  ui_routes: [/cart, /checkout, /order/confirmation]\n  api: [POST /api/orders]\nverified_against_live: 2026-09-01\ncoverage: covered`,
+}, o);
+/* the cart cycle stopped at CP2 */
+const C=o=>Object.assign({
+  cycle:"CY-25-C1", layer:"UI", source:"pipeline", sources:SRC_SPEC,
+  reached:["00-preflight","01-scope","02-architecture","03-case-design"],
+  na:["a09-performance","a10-design-parity","a11-ai-eval","a12-drift"],
+  scope:{in:true, confidence:"0.60", why:"The behaviour is clear, but the control is not built and no selector exists to verify against. Forces the CP1 review."},
+  verdict:"blocked — control not built", area:"cart",
+  probe:[{what:'the "Save for later" control', found:false, evidence:"no matching element on /cart"}],
+  probeTitle:"Surfaced, not masked",
+  probeNote:"The control does not exist in this build. Later phases will skip rather than invent a selector, and the cycle holds at CP2 for a human.",
+}, o);
+
+const TESTS=[
+/* ── checkout ─────────────────────────────────────────────────────────── */
+R({id:"AQA-101", title:"Complete a card checkout", type:"positive", area:"checkout", verdict:"pass", duration:"4.2s",
+  spec:{source:"tracker", ref:"AQA-EP-CHECKOUT / AQA-101", text:"A signed-in shopper with one item can pay by card and receive a confirmation number."},
+  probe:[{what:"the checkout route", found:true, evidence:"/checkout · HTTP 200"},
+         {what:"the card form", found:true, evidence:'form[data-testid="card-form"]'},
+         {what:"the confirmation number", found:true, evidence:'[data-testid="order-number"]'}],
+  objective:"A valid card order completes and returns a confirmation number",
+  expected:"An order-confirmation number is shown",
+  gherkin:`<span class="kw">Scenario:</span> AQA-101 Complete a card checkout
+  <span class="kw">When</span> I open the checkout
+  <span class="kw">And</span> I enter a valid shipping address and card
+  <span class="kw">And</span> I place the order
+  <span class="kw">Then</span> I see an order-confirmation number`,
+  gen:`tests/features/checkout.steps.ts\n  When("I place the order", async ({ checkout }) => { await checkout.placeOrder(); });\n  Then("I see an order-confirmation number", async ({ checkout }) =>\n    expect(await checkout.orderNumber()).toMatch(/^ACME-\\d{6}$/));`,
+  exec:{cmd:'npx playwright test --grep "@area:checkout" -g "AQA-101"',
+   steps:[["Open the checkout","/checkout rendered in 610ms"],["Enter address and card","form accepted"],["Place the order","POST /api/orders → 201"],["Read the confirmation","ACME-418207"]],
+   conclusion:"Passed on the first run. No retry, no heal."},
+  review:`<p><span class="pill gate">3 findings · 0 blocking</span></p><ul><li>Assertion on the order number uses a regex where an exact match would be stronger — noted, not blocking.</li><li>The address fixture duplicates one already in the shared factory.</li><li>Missing an <span class="mono">@smoke</span> tag; this case belongs in the smoke set.</li></ul><p class="sub2">Reviewed like a pull request against conventions.md. Comments, never a merge.</p>`}),
+
+R({id:"AQA-102", title:"An expired card is rejected", type:"negative", area:"checkout", verdict:"pass", duration:"2.8s",
+  spec:{source:"tracker", ref:"AQA-EP-CHECKOUT / AQA-102", text:"An expired card must be refused with a clear message."},
+  probe:[{what:"the card error region", found:true, evidence:'[role="alert"] on the card form'}],
+  objective:"An expired card blocks the order with a message naming the reason",
+  expected:'The order is blocked with a "card expired" message',
+  gherkin:`<span class="kw">Scenario:</span> AQA-102 An expired card is rejected
+  <span class="kw">When</span> I pay with an expired card
+  <span class="kw">Then</span> the order is blocked with a clear "card expired" message`,
+  gen:`Then("the order is blocked with a clear {string} message", async ({ checkout }, msg) =>\n  expect(await checkout.error()).toContain(msg));`,
+  exec:{cmd:'npx playwright test -g "AQA-102"',
+   steps:[["Submit an expired card","POST /api/orders → 402"],["Read the alert",'"That card has expired."'],["Check the cart","still intact — nothing was consumed"]],
+   conclusion:"Refused, with a message a shopper can act on, and no side effect on the cart."}}),
+
+R({id:"AQA-103", title:"The minimum order value is enforced", type:"edge", area:"checkout", verdict:"pass", duration:"2.4s",
+  spec:{source:"docs · checkout runbook", ref:"runbook §4", text:"Checkout is blocked below the minimum order value."},
+  probe:[{what:"the minimum-order notice", found:true, evidence:'[data-testid="min-order-notice"]'}],
+  scope:{in:true, confidence:"0.71", why:"This rule is in the runbook but not in the epic. Pre-flight flagged the conflict; scope kept it in and lowered confidence so a human sees it at CP1."},
+  objective:"A cart below the minimum cannot reach payment",
+  expected:"Checkout is blocked with the minimum-order notice",
+  gherkin:`<span class="kw">Scenario:</span> AQA-103 The minimum order value is enforced
+  <span class="kw">When</span> my cart total is below the minimum
+  <span class="kw">And</span> I open the checkout
+  <span class="kw">Then</span> checkout is blocked with the minimum-order notice`,
+  gen:`Given("my cart total is below the minimum", async ({ cart }) => { await cart.setTotal(4.99); });`,
+  exec:{cmd:'npx playwright test -g "AQA-103"',
+   steps:[["Set the cart to 4.99","below the 10.00 minimum"],["Open the checkout","blocked before the payment step"],["Read the notice",'"Orders start at 10.00."']],
+   conclusion:"Enforced. This case exists only because pre-flight reconciled the runbook against the epic and surfaced the difference."}}),
+
+R({id:"AQA-104", title:"Leaving checkout with unsaved details warns me", type:"guard", area:"checkout", verdict:"pass", duration:"3.1s",
+  spec:{source:"tracker", ref:"AQA-EP-CHECKOUT / AQA-104", text:"Navigating away mid-checkout must warn before losing entered details."},
+  probe:[{what:"the beforeunload guard", found:true, evidence:"window.onbeforeunload registered on /checkout"}],
+  objective:"Navigating away with unsaved details prompts before discarding them",
+  expected:"A warning is shown before the details are lost",
+  gherkin:`<span class="kw">Scenario:</span> AQA-104 Leaving checkout with unsaved details warns me
+  <span class="kw">When</span> I enter an address without placing the order
+  <span class="kw">And</span> I navigate away
+  <span class="kw">Then</span> I am warned about losing my details`,
+  gen:`page.on("dialog", d => { captured = d.message(); d.dismiss(); });`,
+  exec:{cmd:'npx playwright test -g "AQA-104"',
+   steps:[["Enter an address","form dirty"],["Navigate away","beforeunload dialog raised"],["Dismiss it","still on /checkout, details intact"]],
+   conclusion:"Guarded. The test dismisses the dialog and asserts the details survived — not merely that a dialog appeared."}}),
+
+R({id:"AQA-111", title:"Ordering with no payment token is refused", type:"negative", layer:"API", area:"auth", verdict:"pass",
+  spec:{source:"tracker", ref:"AQA-EP-CHECKOUT / AQA-111", text:"An order without a valid payment token is refused."},
+  probe:[{what:"POST /api/orders auth", found:true, evidence:"bearer required"}],
+  objective:"The orders endpoint refuses an unauthenticated caller",
+  apiCase:`POST /api/orders with no Authorization header\nexpect 401`,
+  expected:"401 UNAUTHORIZED",
+  gen:`test("orders reject anonymous", async ({ request }) =>\n  expect((await request.post("/api/orders")).status()).toBe(401));`,
+  exec:{cmd:"POST /api/orders with no bearer token", steps:[["Send the request","HTTP 401"],["Read the body",'{"error":"UNAUTHORIZED"}']], conclusion:"Refused at the middleware, before any order row is written."}}),
+
+/* ── search ───────────────────────────────────────────────────────────── */
+R({id:"AQA-301", title:"Search returns relevant results for a known term", type:"positive", area:"search", verdict:"pass", duration:"1.6s",
+  spec:{source:"tracker", ref:"AQA-EP-SEARCH / AQA-301", text:"A known product term returns that product in the first page of results."},
+  probe:[{what:"the search field", found:true, evidence:'input[name="q"]'},{what:"the results list", found:true, evidence:'[data-testid="results"]'}],
+  objective:"A known term surfaces its product on page one",
+  expected:"The product appears in the first page of results",
+  gherkin:`<span class="kw">Scenario:</span> AQA-301 Search returns relevant results for a known term
+  <span class="kw">When</span> I search for "kettle"
+  <span class="kw">Then</span> the first page of results contains the kettle`,
+  gen:`Then("the first page of results contains {string}", async ({ search }, name) =>\n  expect(await search.titles()).toContain(name));`,
+  exec:{cmd:'npx playwright test -g "AQA-301"', steps:[['Search "kettle"',"12 results in 180ms"],["Read the first page","kettle present at position 1"]], conclusion:"Passed."}}),
+
+R({id:"AQA-302", title:"Search with no results shows the empty state", type:"edge", area:"search", verdict:"pass", duration:"1.2s",
+  spec:{source:"tracker", ref:"AQA-EP-SEARCH / AQA-302", text:"A term with no matches shows an empty state, not a blank page."},
+  probe:[{what:"the empty state", found:true, evidence:'[data-testid="no-results"]'}],
+  objective:"A no-match search renders a real empty state",
+  expected:"The empty state is shown with a suggestion",
+  gherkin:`<span class="kw">Scenario:</span> AQA-302 Search with no results shows the empty state
+  <span class="kw">When</span> I search for "zzzzq"
+  <span class="kw">Then</span> I see the no-results message`,
+  gen:`Then("I see the no-results message", async ({ search }) =>\n  expect(await search.emptyState()).toBeVisible());`,
+  exec:{cmd:'npx playwright test -g "AQA-302"', steps:[['Search "zzzzq"',"0 results"],["Read the page",'"Nothing matched. Try a broader term."']], conclusion:"Empty state renders, with a next step rather than a dead end."}}),
+
+R({id:"AQA-303", title:"Search ranking is stable across repeats", type:"edge", area:"search", verdict:"pass (healed)", duration:"5.9s",
+  spec:{source:"tracker", ref:"AQA-EP-SEARCH / AQA-303", text:"The same query run twice returns the same order."},
+  probe:[{what:"result ordering", found:true, evidence:"relevance score exposed in the response"}],
+  objective:"Repeating a query returns a stable order",
+  expected:"Two runs of the same query return the same order",
+  gherkin:`<span class="kw">Scenario:</span> AQA-303 Search ranking is stable across repeats
+  <span class="kw">When</span> I search for "kettle" twice
+  <span class="kw">Then</span> both result orders match`,
+  gen:`Then("both result orders match", async ({ search }) =>\n  expect(first).toEqual(second));`,
+  exec:{cmd:'npx playwright test -g "AQA-303"',
+   steps:[["First run","order A"],["Second run","order A — but the assertion failed"],["Read the failure","compared objects, not ids: the timestamp field differed"]],
+   conclusion:"Failed on the first attempt. Triage classified it as a test defect, not a product bug — see the next agent."},
+  heal:`<p><span class="pill ok">healed in 1 cycle</span> Classified as a <b>test defect</b>, not a product bug.</p>
+   <div class="sub">What was wrong</div><p>The assertion compared whole result objects, which carry a per-request timestamp. The <i>ranking</i> was stable; the assertion was not.</p>
+   <div class="sub">What changed</div><pre>- expect(first).toEqual(second);\n+ expect(first.map(r => r.id)).toEqual(second.map(r => r.id));</pre>
+   <div class="banner"><b>No bug filed</b>A test that asserts the wrong thing is the test's defect. Filing this against the product would have wasted a developer's morning. The self-healer is capped at 3 cycles; this took 1.</div>`,
+  review:`<p><span class="pill gate">2 findings · 0 blocking</span></p><ul><li>The healed assertion should carry a comment saying why ids are compared rather than objects.</li><li>Consider a shared matcher for order-only comparison.</li></ul>`}),
+
+/* ── account ──────────────────────────────────────────────────────────── */
+R({id:"AQA-401", title:"Update a profile display name", type:"positive", area:"account", verdict:"pass", duration:"1.9s",
+  spec:{source:"tracker", ref:"AQA-EP-ACCOUNT / AQA-401", text:"A shopper can change their display name."},
+  probe:[{what:"the profile form", found:true, evidence:'form[data-testid="profile"]'}],
+  objective:"A changed display name persists across a reload",
+  expected:"The new name is shown after a reload",
+  gherkin:`<span class="kw">Scenario:</span> AQA-401 Update a profile display name
+  <span class="kw">When</span> I change my display name
+  <span class="kw">Then</span> the new name survives a reload`,
+  gen:`Then("the new name survives a reload", async ({ page, profile }) => {\n  await page.reload(); expect(await profile.displayName()).toBe("Ada L.");\n});`,
+  exec:{cmd:'npx playwright test -g "AQA-401"', steps:[["Change the name","PUT /api/profile → 204"],["Reload",'"Ada L." shown']], conclusion:"Persisted."}}),
+
+R({id:"AQA-402", title:"An invalid email is rejected", type:"negative", layer:"API", area:"account", verdict:"pass",
+  spec:{source:"tracker", ref:"AQA-EP-ACCOUNT / AQA-402", text:"An address that is not an email is refused."},
+  probe:[{what:"email validation", found:true, evidence:"server-side, not only the input type"}],
+  objective:"A malformed email never reaches the profile record",
+  apiCase:`PUT /api/profile  {"email": "not-an-email"}\nexpect 400`,
+  expected:"400 with a field-level error",
+  gen:`expect((await request.put("/api/profile", { data: { email: "not-an-email" } })).status()).toBe(400);`,
+  exec:{cmd:'PUT /api/profile {"email":"not-an-email"}', steps:[["Send the request","HTTP 400"],["Read the body",'{"field":"email","error":"INVALID_EMAIL"}']], conclusion:"Refused server-side, so a client that skips its own validation cannot get through."}}),
+
+R({id:"AQA-403", title:"Deleting an account is confirmed first", type:"guard", area:"account", verdict:"pass", duration:"2.2s",
+  spec:{source:"tracker", ref:"AQA-EP-ACCOUNT / AQA-403", text:"Account deletion must be confirmed before it takes effect."},
+  probe:[{what:"the confirmation dialog", found:true, evidence:'[role="alertdialog"]'}],
+  objective:"Cancelling the confirmation leaves the account untouched",
+  expected:"No request is sent and the account survives",
+  gherkin:`<span class="kw">Scenario:</span> AQA-403 Deleting an account is confirmed first
+  <span class="kw">When</span> I choose to delete my account
+  <span class="kw">And</span> I cancel the confirmation
+  <span class="kw">Then</span> my account still exists`,
+  gen:`Then("my account still exists", async ({ request }) =>\n  expect((await request.get("/api/profile")).status()).toBe(200));`,
+  exec:{cmd:'npx playwright test -g "AQA-403"',
+   steps:[["Choose delete","alertdialog raised"],["Cancel","no DELETE request observed on the network"],["Read the profile","HTTP 200 — account intact"]],
+   conclusion:"Guarded. The case asserts that no request was sent, not merely that the account survived."}}),
+
+R({id:"AQA-501", title:"Checkout submit stays inside its latency budget", type:"positive", layer:"performance", area:"performance",
+  verdict:"fail", duration:"140 samples",
+  spec:{source:"docs · checkout runbook", ref:"runbook §7", text:"checkout.submit p95 must stay under 800ms."},
+  probe:[{what:"the metrics API", found:true, evidence:"run history available for 140 samples"}],
+  objective:"The submit step stays inside the budget declared for it",
+  apiCase:`pull 140 samples of checkout.submit\ncompare p95 against the declared 800ms budget`,
+  expected:"p95 ≤ 800ms",
+  exec:{cmd:"performance-analyst · pull + summarise",
+   steps:[["Pull 140 samples","p50 610ms"],["Compute p95","1180ms"],["Compare to budget","800ms — breached"],["Correlate with logs","slow spans in the payment-provider call"]],
+   conclusion:"PERF-01 · p95 1180ms against a declared 800ms budget. Raised as a bug because the budget was declared in advance, not because a number looked large. This is report-only and did not block the release."}}),
+
+/* ── cart · the cycle that stopped ────────────────────────────────────── */
+C({id:"AQA-201", title:"Save an item for later", type:"positive",
+  spec:{source:"free-text spec", ref:"spec:cart-save-for-later", text:'"Save for later" moves an item out of the active cart into a Saved list.'},
+  objective:'"Save for later" moves the item out of the active cart',
+  expected:"The item leaves the cart and appears under Saved",
+  gherkin:`<span class="kw">Scenario:</span> AQA-201 Save an item for later
+  <span class="kw">When</span> I choose "Save for later" on an item
+  <span class="kw">Then</span> it moves to my "Saved" list and leaves the active cart`}),
+
+C({id:"AQA-202", title:"Move a saved item back to the cart", type:"positive",
+  spec:{source:"free-text spec", ref:"spec:cart-save-for-later", text:'"Move to cart" returns a saved item to the active cart.'},
+  objective:'"Move to cart" returns the item',
+  expected:"The item returns to the active cart",
+  gherkin:`<span class="kw">Scenario:</span> AQA-202 Move a saved item back to the cart
+  <span class="kw">When</span> I choose "Move to cart" on a saved item
+  <span class="kw">Then</span> it returns to my active cart`}),
+
+C({id:"AQA-204", title:"Saved items are not counted in the cart total", type:"edge",
+  spec:{source:"free-text spec", ref:"spec:cart-save-for-later", text:"Saved items must be excluded from the cart total."},
+  objective:"The cart total ignores saved items",
+  expected:"The total does not include saved items",
+  gherkin:`<span class="kw">Scenario:</span> AQA-204 Saved items are not counted in the cart total
+  <span class="kw">Then</span> my cart total excludes anything in Saved`}),
+
+C({id:"AQA-205", title:"Saving an out-of-stock item is blocked", type:"negative",
+  spec:{source:"free-text spec", ref:"spec:cart-save-for-later", text:"An out-of-stock item cannot be saved for later."},
+  objective:"An out-of-stock item cannot be saved",
+  expected:"Saving is refused with a reason",
+  gherkin:`<span class="kw">Scenario:</span> AQA-205 Saving an out-of-stock item is blocked
+  <span class="kw">When</span> I choose "Save for later" on an out-of-stock item
+  <span class="kw">Then</span> I am told it cannot be saved`}),
+
+C({id:"AQA-206", title:"Saving the last cart item leaves an empty cart cleanly", type:"edge",
+  spec:{source:"free-text spec", ref:"spec:cart-save-for-later", text:"Saving the only item must leave a clean empty cart."},
+  objective:"An emptied cart renders its empty state rather than a broken list",
+  expected:"The cart shows its empty state",
+  gherkin:`<span class="kw">Scenario:</span> AQA-206 Saving the last cart item leaves an empty cart cleanly
+  <span class="kw">When</span> I save the only item in my cart
+  <span class="kw">Then</span> my cart shows its empty state`}),
+
+C({id:"AQA-207", title:"Remove a saved item", type:"guard",
+  spec:{source:"free-text spec", ref:"spec:cart-save-for-later", text:"A saved item can be removed from the Saved list."},
+  objective:"A saved item can be removed, with confirmation",
+  expected:"The item leaves the Saved list after confirming",
+  gherkin:`<span class="kw">Scenario:</span> AQA-207 Remove a saved item
+  <span class="kw">When</span> I remove a saved item
+  <span class="kw">And</span> I confirm
+  <span class="kw">Then</span> it leaves my Saved list`}),
+];
+
 
 /* ── helpers ────────────────────────────────────────────────────────────── */
-function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
-const runsOf=c=>c.runs.map(id=>RUNS.find(r=>r.runId===id)).filter(Boolean);
-function agentState(cyc,agent){
-  for(const r of runsOf(cyc)){
-    if((r.done||[]).includes(agent.id)) return "ok";
-    if((r.na||[]).includes(agent.id))   return "na";
-  }
-  return runsOf(cyc).some(r=>r.awaiting&&agent.gate===r.awaiting)?"gate":"pending";
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+const cyclesOf=m=>CYCLES.filter(c=>c.milestone===m.id);
+const testsOf=c=>TESTS.filter(t=>t.cycle===c.id);
+function agentState(c,agent){
+  if((c.ran||[]).includes(agent.id))return "ok";
+  if((c.na||[]).includes(agent.id))return "na";
+  return c.awaiting&&agent.gate===c.awaiting?"gate":"pending";
 }
-function agentTally(cyc){
+function agentTally(c){
   const nums=ALL.filter(p=>p.n); let ok=0,na=0,pend=0;
-  for(const a of nums){const s=agentState(cyc,a); if(s==="ok")ok++; else if(s==="na")na++; else pend++;}
+  for(const a of nums){const s=agentState(c,a); s==="ok"?ok++:s==="na"?na++:pend++;}
   return {ok,na,pend,total:nums.length};
+}
+const VER=v=>/^pass/i.test(v)?"p":/^fail/i.test(v)?"f":/block|not/i.test(v)?"n":"b";
+function verdictPill(v){
+  const k=VER(v);
+  return `<span class="pill ${k==="p"?"ok":k==="f"?"fail":k==="b"?"gate":"muted"}">${esc(v)}</span>`;
 }
 function statusPill(x){
   if(x.status==="complete")return '<span class="pill ok">complete</span>';
-  if(x.status==="paused")return '<span class="pill gate">paused · awaiting '+x.awaiting+'</span>';
+  if(x.status==="paused")return '<span class="pill gate">paused · awaiting '+esc(x.awaiting)+'</span>';
   if(x.status==="running")return '<span class="pill run">running</span>';
   return '<span class="pill">'+esc(x.status)+'</span>';
 }
-const sevPill=s=>({high:'<span class="pill fail">high</span>',blocking:'<span class="pill fail">blocking</span>',medium:'<span class="pill gate">medium</span>',low:'<span class="pill muted">low</span>',info:'<span class="pill">info</span>'}[s]||'<span class="pill">'+esc(s)+'</span>');
-
-/* ── LEVEL 1 · cycles ───────────────────────────────────────────────────── */
-function renderCycles(q){
-  q=(q||"").trim().toLowerCase();
-  const list=CYCLES.filter(c=>!q||[c.id,c.name,c.target,c.status].join(" ").toLowerCase().includes(q));
-  const rows=list.map(c=>{
-    const t=agentTally(c), rs=runsOf(c);
-    const bars=ALL.filter(p=>p.n).map(a=>{const s=agentState(c,a);return `<i class="${s==="ok"?"ok":s==="na"?"na":s==="gate"?"gate":""}" title="${a.n}. ${esc(a.a)} — ${s}"></i>`;}).join("");
-    return `<button class="cyc" onclick="location.hash='#/cycle/${c.id}'">
-      <div><div class="cyc-id">${esc(c.id)}</div><div class="cyc-n">${esc(c.name)}</div><div class="cyc-m">${esc(c.target)} · started ${esc(c.started)}</div></div>
-      <div class="cyc-stats"><span><b>${c.cases.length}</b> test cases</span><span><b>${rs.length}</b> run${rs.length!==1?"s":""}</span><span><b>${c.findings.length}</b> findings</span></div>
-      <div><div class="agbar">${bars}</div><div class="agcap">${t.ok} of ${t.total} agents produced output${t.na?` · ${t.na} not configured`:""}</div></div>
-      <div>${statusPill(c)}</div></button>`;
-  }).join("");
-  return `<p class="eyebrow">AQA · Autonomous QA</p><h1>Cycles</h1>
-  <p class="subt">Every QA cycle that has been run. Open one to see the test flows and cases inside it, which of the 12 agents produced output, and what each of them found.</p>
-  <div class="search"><input id="q" type="search" placeholder="Search cycles — checkout, cart, paused…" value="${esc(q)}" oninput="onSearch(this.value)"><span class="count">${list.length} / ${CYCLES.length} cycles</span></div>
-  <div class="cycles">${rows||'<div class="empty">No cycles match “'+esc(q)+'”.</div>'}</div>
-  <div class="legend" style="margin-top:16px"><span><i class="dot ok"></i>agent produced output</span><span><i class="dot gate"></i>waiting on a human gate</span><span><i class="dot stub"></i>not configured for this target</span></div>
-  <div class="foot">Prefer the flat view? <button class="back" style="margin:0" onclick="location.hash='#/runs'">open the Runs Explorer →</button></div>`;
+function coverage(c){
+  const ts=testsOf(c); if(!ts.length)return 0;
+  return Math.round(ts.filter(t=>VER(t.verdict)==="p").length/ts.length*100);
+}
+function verdictBar(ts){
+  const n=ts.length||1, cnt={p:0,f:0,b:0,n:0};
+  ts.forEach(t=>cnt[VER(t.verdict)]++);
+  return `<div class="vbar">${["p","f","b","n"].map(k=>cnt[k]?`<span class="${k}" style="width:${cnt[k]/n*100}%"></span>`:"").join("")}</div>`;
 }
 
-/* ── LEVEL 2 · one cycle: flows, cases, agents, findings ────────────────── */
-function renderCycle(id){
-  const c=CYCLES.find(x=>x.id===id);
-  if(!c) return `<button class="back" onclick="location.hash='#/'">← all cycles</button><div class="empty">Cycle <b>${esc(id)}</b> not found.</div>`;
-  const rs=runsOf(c), t=agentTally(c), primary=rs[0]?rs[0].runId:null;
+/* ── LEVEL 1 · Runs Explorer: milestones, cycles, coverage, dates ───────── */
+function renderExplorer(q){
+  q=(q||"").trim().toLowerCase();
+  const match=c=>!q||[c.id,c.name,c.kind,c.target,c.status,(MILESTONES.find(m=>m.id===c.milestone)||{}).name].join(" ").toLowerCase().includes(q);
+  const allT=TESTS.length, passT=TESTS.filter(t=>VER(t.verdict)==="p").length;
+  const openGates=CYCLES.filter(c=>c.awaiting).length;
 
-  const caseRows=c.cases.map(k=>{
-    const run=k.run||primary;
-    const v=/pass/i.test(k.verdict)?'<span class="pill ok">'+esc(k.verdict)+'</span>'
-          :/fail|blocked/i.test(k.verdict)?'<span class="pill gate">'+esc(k.verdict)+'</span>'
-          :'<span class="pill muted">'+esc(k.verdict)+'</span>';
-    return `<tr class="clk" onclick="location.hash='#/run/${run}/${k.phase}'">
-      <td class="cid">${esc(k.id)}</td><td>${esc(k.title)}</td>
-      <td><span class="chip">@type:${esc(k.type)}</span><span class="chip">@area:${esc(k.area)}</span></td>
-      <td>${esc(k.state)}</td><td>${v}</td><td class="arrowc">open trace →</td></tr>`;
+  const blocks=MILESTONES.map(m=>{
+    const cs=cyclesOf(m).filter(match); if(!cs.length)return "";
+    const mt=cs.flatMap(testsOf);
+    const cov=mt.length?Math.round(mt.filter(t=>VER(t.verdict)==="p").length/mt.length*100):0;
+    const tiles=cs.map(c=>{
+      const ts=testsOf(c), t=agentTally(c);
+      const bars=ALL.filter(p=>p.n).map(a=>{const s=agentState(c,a);return `<i class="${s==="ok"?"ok":s==="na"?"na":s==="gate"?"gate":""}" title="${a.n}. ${esc(a.a)} — ${s}"></i>`;}).join("");
+      return `<button class="cyc" onclick="go('#/cycle/${c.id}')">
+        <div class="cyc-top"><div><div class="cyc-id">${esc(c.id)} · ${esc(c.kind)}</div><div class="cyc-n">${esc(c.name)}</div>
+          <div class="cyc-m">${esc(c.target)}</div></div><div>${statusPill(c)}</div></div>
+        ${verdictBar(ts)}
+        <div class="cyc-row"><span><b>${ts.length}</b> tests</span><span><b>${coverage(c)}%</b> passing</span><span><b>${t.ok}</b>/${t.total} agents</span></div>
+        <div class="agbar">${bars}</div>
+        <div class="cyc-row" style="border:none;padding-top:2px"><span>${esc(c.started)} → ${esc(c.ended||"in progress")}</span></div>
+      </button>`;
+    }).join("");
+    return `<section class="ms"><div class="ms-h">
+      <button class="ms-t" onclick="go('#/milestone/${m.id}')">${esc(m.name)} →</button>
+      <span class="ms-m"><b>${esc(m.id)}</b> · ${esc(m.window)} · ${cs.length} cycle${cs.length!==1?"s":""} · ${mt.length} tests</span>
+      <span class="cov">coverage <div class="covbar"><i style="width:${cov}%"></i></div> <b style="font-family:var(--mono);color:var(--ink)">${cov}%</b></span>
+    </div><div class="cycles">${tiles}</div></section>`;
   }).join("");
 
-  const agCard=a=>{
-    const st=agentState(c,a);
-    const run=rs.find(r=>(r.done||[]).includes(a.id))||rs.find(r=>(r.na||[]).includes(a.id))||rs[0];
-    const result=run&&run.counts&&run.counts[a.id]?run.counts[a.id]:(st==="gate"?"waiting on "+(run&&run.awaiting):"not reached");
-    const pill=st==="ok"?'<span class="pill ok">ran</span>':st==="na"?'<span class="pill muted">not configured</span>':st==="gate"?'<span class="pill gate">at gate</span>':'<span class="pill muted">not reached</span>';
-    return `<button class="agcard ${st==="ok"?"":"dim"}" onclick="location.hash='#/run/${run?run.runId:primary}/${a.id}'">
-      <span class="agnum ${st==="ok"?"":"na"}">${a.n}</span>
-      <span><span class="agn">${esc(a.a)}</span><span class="agi">${esc(a.id)}</span><span class="agr">${esc(result)}</span></span>
-      <span>${pill}</span></button>`;
-  };
-
-  const findRows=c.findings.map(f=>{
-    const run=f.run||primary;
-    const clickable=f.phase?` class="clk" onclick="location.hash='#/run/${run}/${f.phase}'"`:"";
-    return `<tr${clickable}><td class="cid">${esc(f.id)}</td><td>${esc(f.t)}</td><td>${sevPill(f.sev)}</td>
-      <td>${f.who==="pipeline"?'<span class="pill ok">found by the pipeline</span>':'<span class="pill gate">found by hand</span>'}</td>
-      <td class="arrowc">${f.phase?"open trace →":""}</td></tr>`;
-  }).join("");
-  const byPipe=c.findings.filter(f=>f.who==="pipeline").length;
-
-  const runRows=rs.map(r=>`<tr class="clk" onclick="location.hash='#/run/${r.runId}'">
-    <td class="mono" style="color:var(--accent);font-weight:600">${esc(r.runId)}</td><td>${esc(r.name)}</td>
-    <td class="mono">${esc(r.epicKey)}</td><td>${esc(r.source)}</td><td>${statusPill(r)}</td><td class="arrowc">open trace →</td></tr>`).join("");
-
-  return `<div class="crumb"><button onclick="location.hash='#/'">Cycles</button><span class="sep">/</span><span>${esc(c.id)}</span></div>
-  <div class="dhead"><h2>${esc(c.name)}</h2>${statusPill(c)}</div>
-  <div class="kv">cycle <b>${esc(c.id)}</b> · target ${esc(c.target)} · started ${esc(c.started)}</div>
-  <p class="subt" style="margin-top:8px">${esc(c.note)}</p>
-
+  return `<p class="eyebrow">AQA · Autonomous QA</p><h1>Runs Explorer</h1>
+  <p class="subt">Every milestone, the cycles inside it, and how far each one got. Open a cycle to see the individual tests it ran, then open a test to watch all 12 agents pass it hand to hand, input to output.</p>
   <div class="tiles">
-    <div class="tile"><div class="n">${c.cases.length}</div><div class="l">Test cases</div><div class="s">across ${rs.length} run${rs.length!==1?"s":""}</div></div>
+    <div class="tile"><div class="n">${MILESTONES.length}</div><div class="l">Milestones</div><div class="s">${CYCLES.length} cycles inside them</div></div>
+    <div class="tile"><div class="n">${allT}</div><div class="l">Tests</div><div class="s">${passT} passing · ${allT-passT} not</div></div>
+    <div class="tile"><div class="n">${allT?Math.round(passT/allT*100):0}%</div><div class="l">Coverage</div><div class="s">across every cycle</div></div>
+    <div class="tile"><div class="n">${openGates}</div><div class="l">Open gates</div><div class="s">${openGates?"waiting on a human":"nothing waiting"}</div></div>
+  </div>
+  <div class="search"><input id="q" type="search" placeholder="Search milestones, cycles, targets…" value="${esc(q)}" oninput="onSearch(this.value)"><span class="count">${CYCLES.filter(match).length} / ${CYCLES.length} cycles</span></div>
+  ${blocks||'<div class="empty">Nothing matches “'+esc(q)+'”.</div>'}
+  <div class="legend" style="margin-top:20px"><span><i class="dot ok"></i>passed</span><span><i class="dot fail"></i>failed</span><span><i class="dot gate"></i>blocked / at a gate</span><span><i class="dot stub"></i>not run</span></div>`;
+}
+
+/* ── LEVEL 2 · one milestone ────────────────────────────────────────────── */
+function renderMilestone(id){
+  const m=MILESTONES.find(x=>x.id===id);
+  if(!m)return `<button class="back" onclick="go('#/')">← Runs Explorer</button><div class="empty">Milestone <b>${esc(id)}</b> not found.</div>`;
+  const cs=cyclesOf(m), ts=cs.flatMap(testsOf);
+  const cov=ts.length?Math.round(ts.filter(t=>VER(t.verdict)==="p").length/ts.length*100):0;
+  const rows=cs.map(c=>{
+    const t=testsOf(c);
+    return `<tr class="clk" onclick="go('#/cycle/${c.id}')"><td class="cid">${esc(c.id)}</td>
+      <td>${esc(c.name)}<div class="cyc-m">${esc(c.target)}</div></td><td><span class="chip">${esc(c.kind)}</span></td>
+      <td class="mono">${esc(c.started)}<div style="color:var(--faint)">${esc(c.ended||"in progress")}</div></td>
+      <td class="mono">${t.length}</td><td class="mono">${coverage(c)}%</td><td>${statusPill(c)}</td><td class="arrowc">open →</td></tr>`;
+  }).join("");
+  return `<div class="crumb"><button onclick="go('#/')">Runs Explorer</button><span class="sep">/</span><span>${esc(m.id)}</span></div>
+  <div class="dhead"><h2>${esc(m.name)}</h2><span class="pill ${m.status==="complete"?"ok":"gate"}">${esc(m.status)}</span></div>
+  <div class="kv">milestone <b>${esc(m.id)}</b> · ${esc(m.window)} · owner ${esc(m.owner)}</div>
+  <p class="subt" style="margin-top:8px">${esc(m.note)}</p>
+  <div class="tiles">
+    <div class="tile"><div class="n">${cs.length}</div><div class="l">Cycles</div><div class="s">in this milestone</div></div>
+    <div class="tile"><div class="n">${ts.length}</div><div class="l">Tests</div><div class="s">across all cycles</div></div>
+    <div class="tile"><div class="n">${cov}%</div><div class="l">Coverage</div><div class="s">tests passing</div></div>
+    <div class="tile"><div class="n">${cs.filter(c=>c.awaiting).length}</div><div class="l">Open gates</div><div class="s">cycles waiting on a human</div></div>
+  </div>
+  <div class="sec"><h3>Cycles</h3><p class="h-sub">Each cycle is one pass over a target. Open one to see its tests.</p>
+  <div class="tw"><table><thead><tr><th>Cycle</th><th>Name</th><th>Kind</th><th>Dates</th><th>Tests</th><th>Pass</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+
+/* ── LEVEL 3 · one cycle: its tests, filterable ─────────────────────────── */
+let FILTER={type:"all",area:"all"};
+function setFilter(k,v){FILTER[k]=v;paint(renderCycle(CURRENT_CYCLE));}
+let CURRENT_CYCLE=null;
+function renderCycle(id){
+  CURRENT_CYCLE=id;
+  const c=CYCLES.find(x=>x.id===id);
+  if(!c)return `<button class="back" onclick="go('#/')">← Runs Explorer</button><div class="empty">Cycle <b>${esc(id)}</b> not found.</div>`;
+  const m=MILESTONES.find(x=>x.id===c.milestone)||{name:"—",id:""};
+  const all=testsOf(c), t=agentTally(c);
+
+  const types=[...new Set(all.flatMap(x=>[x.type,x.layer]).filter(Boolean))];
+  const areas=[...new Set(all.map(x=>x.area).filter(Boolean))];
+  const hit=x=>(FILTER.type==="all"||x.type===FILTER.type||x.layer===FILTER.type)&&(FILTER.area==="all"||x.area===FILTER.area);
+  const shown=all.filter(hit);
+  const cnt=(k,v)=>all.filter(x=>k==="type"?(x.type===v||x.layer===v):x.area===v).length;
+
+  const chips=(k,vals)=>[`<button class="fchip ${FILTER[k]==="all"?"on":""}" onclick="setFilter('${k}','all')">All<span class="c">${all.length}</span></button>`]
+    .concat(vals.map(v=>`<button class="fchip ${FILTER[k]===v?"on":""}" onclick="setFilter('${k}','${esc(v)}')">${esc(v)}<span class="c">${cnt(k,v)}</span></button>`)).join("");
+
+  const rows=shown.map(x=>`<tr class="clk" onclick="go('#/test/${x.id}')">
+    <td class="cid">${esc(x.id)}</td><td>${esc(x.title)}</td>
+    <td><span class="chip ty">${esc(x.type)}</span>${x.layer?`<span class="chip ly">${esc(x.layer)}</span>`:""}</td>
+    <td><span class="chip">${esc(x.area)}</span></td>
+    <td>${verdictPill(x.verdict)}</td><td class="mono">${esc(x.duration||"—")}</td><td class="arrowc">agent trace →</td></tr>`).join("");
+
+  return `<div class="crumb"><button onclick="go('#/')">Runs Explorer</button><span class="sep">/</span><button onclick="go('#/milestone/${m.id}')">${esc(m.name)}</button><span class="sep">/</span><span>${esc(c.id)}</span></div>
+  <div class="dhead"><h2>${esc(c.name)}</h2>${statusPill(c)}<span class="chip">${esc(c.kind)}</span></div>
+  <div class="kv">cycle <b>${esc(c.id)}</b> · target ${esc(c.target)} · ${esc(c.started)} → ${esc(c.ended||"in progress")} · source ${esc(c.source)}</div>
+  <p class="subt" style="margin-top:8px">${esc(c.note)}</p>
+  <div class="tiles">
+    <div class="tile"><div class="n">${all.length}</div><div class="l">Tests in cycle</div><div class="s">${all.filter(x=>VER(x.verdict)==="p").length} passing</div></div>
+    <div class="tile"><div class="n">${coverage(c)}%</div><div class="l">Coverage</div><div class="s">of this cycle's tests</div></div>
     <div class="tile"><div class="n">${t.ok} <span style="font-size:14px;color:var(--faint)">/ ${t.total}</span></div><div class="l">Agents ran</div><div class="s">${t.pend} not reached · ${t.na} not configured</div></div>
-    <div class="tile"><div class="n">${c.findings.length}</div><div class="l">Findings</div><div class="s">${byPipe} by the pipeline · ${c.findings.length-byPipe} by hand</div></div>
     <div class="tile"><div class="n">${c.awaiting||"—"}</div><div class="l">Waiting on</div><div class="s">${c.awaiting?"a human decision":"nothing — cycle closed"}</div></div>
   </div>
 
-  <div class="sec"><h3>Test flows &amp; cases</h3><p class="h-sub">Every case this cycle produced. Click one to open the agent trace that authored or ran it.</p>
-    <div class="tw"><table><thead><tr><th>Case</th><th>Flow</th><th>Tags</th><th>State</th><th>Result</th><th></th></tr></thead><tbody>${caseRows}</tbody></table></div></div>
-
-  <div class="sec"><h3>Agents in this cycle</h3><p class="h-sub">All 12. Each one is a standalone skill — the pipeline is one way to run them, not the only way. Click any agent to see exactly what went in and what came out.</p>
-    <div class="divider">Gated pipeline · 1–8</div>
-    <div class="agrid">${PHASES.filter(p=>p.n).map(agCard).join("")}</div>
-    <div class="divider">Async tracks · 9–12 · never block a merge</div>
-    <div class="agrid">${ASYNC.map(agCard).join("")}</div></div>
-
-  <div class="sec"><h3>Findings</h3><p class="h-sub">What this cycle surfaced, and whether the pipeline found it or a human did.</p>
-    <div class="tw"><table><thead><tr><th>ID</th><th>Finding</th><th>Severity</th><th>Source</th><th></th></tr></thead><tbody>${findRows}</tbody></table></div></div>
-
-  <div class="sec"><h3>Runs in this cycle</h3><p class="h-sub">A cycle can carry several epics. Each run is its own trace.</p>
-    <div class="tw"><table><thead><tr><th>Run id</th><th>Name</th><th>Epic</th><th>Source</th><th>Status</th><th></th></tr></thead><tbody>${runRows}</tbody></table></div></div>`;
+  <div class="sec"><h3>Tests in this cycle</h3><p class="h-sub">Filter by type or by area, or leave both on All to list everything. Open any test to see all 12 agents for that one test.</p>
+  <div class="filters">
+    <div class="frow"><span class="flab">Type</span>${chips("type",types)}</div>
+    <div class="frow"><span class="flab">Area</span>${chips("area",areas)}</div>
+  </div>
+  <div class="tw"><table><thead><tr><th>Test</th><th>Flow</th><th>Type</th><th>Area</th><th>Result</th><th>Time</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="empty">No tests match this filter.</td></tr>'}</tbody></table></div></div>`;
 }
 
-/* ── LEVEL 3 · one run, one agent ──────────────────────────────────────── */
-function autoIn(r,p){const M={"00-preflight":`Trigger: scope link <span class="mono">${esc(r.source)}:${esc(r.epicKey)}</span>.`,"01-scope":"The scope link — fetched its children.","02-architecture":"The scope artifact (01-scope).","03-case-design":"The plan (02-architecture).","3b-publish":"The approved Gherkin scenarios (03).","04-generate":"The features (03-case-design).","05-targeted-run":"The generated specs (04).","06-self-heal":"Failures from the targeted run (05).","07-regression":"The whole suite.","08-review":"The generated tests plus conventions.md.","09-finalise":"The run artifacts.","a09-performance":"The running app plus declared per-step budgets.","a10-design-parity":"A design prototype and the live app.","a11-ai-eval":"A golden dataset and a trace endpoint.","a12-drift":"The Feature Registry entries for this feature."};return "<p>"+(M[p.id]||"—")+"</p>";}
-function autoOut(r,p){
-  if((r.na||[]).includes(p.id)) return '<div class="banner warn"><b>Not configured for this target</b>Reported as not-run. The agent never emits a green result it did not earn.</div>';
-  return (r.done||[]).includes(p.id)?"<p><b>"+esc(r.counts[p.id]||"done")+"</b></p>":'<p class="sub2">pending</p>';
+/* ── LEVEL 4 · one test, traced agent by agent ─────────────────────────── */
+function traceFor(test,phaseId){
+  const bespoke=(test.trace||{})[phaseId];
+  if(bespoke)return bespoke;
+  const B=BUILD[phaseId];
+  return B?B(test):null;
 }
-function navState(r,p){
-  if((r.done||[]).includes(p.id))return "ok";
-  if((r.na||[]).includes(p.id))return "na";
-  if(r.awaiting&&p.gate===r.awaiting)return "gate";
-  return "";
+const ASYNC_FIELD={"a09-performance":"perf","a10-design-parity":"parity","a11-ai-eval":"aieval","a12-drift":"drift"};
+function phaseStatus(test,p){
+  if((test.na||[]).includes(p.id))return "na";
+  // An async track is "ran" exactly when it has data for this test — the dot can
+  // never claim a track ran while the panel says it was not configured.
+  if(p.kind==="async")return test[ASYNC_FIELD[p.id]]?"ok":"na";
+  if((test.reached||[]).includes(p.id))return (p.id==="05-targeted-run"&&VER(test.verdict)==="f")?"fail":"ok";
+  const c=CYCLES.find(x=>x.id===test.cycle);
+  return c&&c.awaiting&&p.gate===c.awaiting?"gate":"";
 }
-function renderRun(runId,phaseId){
-  const r=RUNS.find(x=>x.runId===runId);
-  if(!r) return `<button class="back" onclick="location.hash='#/'">← all cycles</button><div class="empty">Run <b>${esc(runId)}</b> not found.</div>`;
-  const cyc=CYCLES.find(c=>c.runs.includes(r.runId));
-  const cur=phaseId&&byId(phaseId)?phaseId:(r.def||"01-scope");
-  const item=p=>{
-    const st=navState(r,p);
-    const g=p.gate?`<span class="ni-g ${st==="ok"?"ok":""}">${p.gate}</span>`:"";
-    const num=p.n?`<span class="ni-n">${p.n}</span>`:`<span class="ni-n" style="opacity:.4">·</span>`;
-    return `<button class="nav-item ${p.id===cur?"active":""}" onclick="location.hash='#/run/${r.runId}/${p.id}'">
-      <span class="ni-dot ${st==="na"?"":st}"></span>${num}<span class="ni-a">${esc(p.a)}</span>${g}</button>`;
+function renderTest(testId,phaseId){
+  const test=TESTS.find(t=>t.id===testId);
+  if(!test)return `<button class="back" onclick="go('#/')">← Runs Explorer</button><div class="empty">Test <b>${esc(testId)}</b> not found.</div>`;
+  const c=CYCLES.find(x=>x.id===test.cycle)||{};
+  const m=MILESTONES.find(x=>x.id===c.milestone)||{};
+  const cur=phaseId&&byId(phaseId)?phaseId:"00-preflight";
+  const p=byId(cur);
+
+  const item=q=>{
+    const st=phaseStatus(test,q);
+    const g=q.gate?`<span class="ni-g ${st==="ok"?"ok":""}">${q.gate}</span>`:"";
+    const num=q.n?`<span class="ni-n">${q.n}</span>`:`<span class="ni-n" style="opacity:.4">·</span>`;
+    return `<button class="nav-item ${q.id===cur?"active":""}" onclick="go('#/test/${test.id}/${q.id}')">
+      <span class="ni-dot ${st==="na"?"":st}"></span>${num}<span class="ni-a">${esc(q.a)}</span>${g}</button>`;
   };
   const nav=`<div class="nav-lbl">Gated pipeline</div>${PHASES.map(item).join("")}
              <div class="nav-lbl">Async tracks · non-blocking</div>${ASYNC.map(item).join("")}`;
 
-  const p=byId(cur);
-  // Design Parity and AI Eval carry a target-independent explainer (they say why
-  // they did not run, and what they would do), so they show on every run. The
-  // Performance and Drift panels are real results, so they show only where the
-  // track actually ran — never borrowed from another run.
-  const ALWAYS_INFO=["a10-design-parity","a11-ai-eval"];
-  const rich=(r.rich&&r.rich[cur]) || (ALWAYS_INFO.includes(cur)||(r.done||[]).includes(cur) ? ASYNC_DEMO[cur] : null) || null;
-  const inHtml=rich?rich.in:autoIn(r,p), outHtml=rich?rich.out:autoOut(r,p);
-  const st=navState(r,p);
+  const tr=traceFor(test,cur)||{in:'<p class="sub2">No input recorded for this agent on this test.</p>',out:'<p class="sub2">No output recorded.</p>'};
+  const st=phaseStatus(test,p);
+  const prev=prevPhase(cur), next=nextPhase(cur);
+  const fromLbl=p.kind==="async"
+    ? `<span class="from" style="cursor:default;color:var(--muted)">independent trigger — not fed by the pipeline</span>`
+    : (prev?`<button class="from" onclick="go('#/test/${test.id}/${prev.id}')">◀ from ${esc(prev.a)} · ${esc(prev.id)}</button>`
+           :`<span class="from" style="cursor:default;color:var(--muted)">the start of the chain</span>`);
+  const toLbl=p.kind==="async"
+    ? `<span class="from" style="cursor:default;color:var(--muted)">report only — passes to no one, blocks nothing</span>`
+    : (next?`<button class="from" onclick="go('#/test/${test.id}/${next.id}')">passes to ${esc(next.a)} · ${esc(next.id)} ▶</button>`
+           :`<span class="from" style="cursor:default;color:var(--muted)">end of the chain</span>`);
+
   const head=[
     p.n?`<span class="pill muted">agent ${p.n} of 12</span>`:`<span class="pill muted">${p.kind==="run"?"execution phase":"pre-flight check"}</span>`,
     p.kind==="async"?'<span class="pill run">async · never blocks</span>':"",
     p.gate?`<span class="pill ${st==="gate"?"gate":"ok"}">${st==="gate"?"⏸ awaiting "+p.gate:"✓ "+p.gate}</span>`:"",
   ].filter(Boolean).join("");
 
-  const crumb=cyc?`<div class="crumb"><button onclick="location.hash='#/'">Cycles</button><span class="sep">/</span><button onclick="location.hash='#/cycle/${cyc.id}'">${esc(cyc.name)}</button><span class="sep">/</span><span>${esc(r.runId)}</span></div>`
-                 :`<div class="crumb"><button onclick="location.hash='#/'">Cycles</button><span class="sep">/</span><span>${esc(r.runId)}</span></div>`;
-
-  return `${crumb}
-  <div class="dhead"><h2>${esc(r.name)}</h2>${statusPill(r)}</div>
-  <div class="kv">run <b>${esc(r.runId)}</b> · epic <b>${esc(r.epicKey)}</b> · ${esc(r.source)} · started ${esc(r.started)}</div>
+  return `<div class="crumb"><button onclick="go('#/')">Runs Explorer</button><span class="sep">/</span><button onclick="go('#/milestone/${m.id}')">${esc(m.name)}</button><span class="sep">/</span><button onclick="go('#/cycle/${c.id}')">${esc(c.name)}</button><span class="sep">/</span><span>${esc(test.id)}</span></div>
+  <div class="dhead"><h2>${esc(test.id)} · ${esc(test.title)}</h2>${verdictPill(test.verdict)}</div>
+  <div class="kv"><span class="chip ty">${esc(test.type)}</span>${test.layer?`<span class="chip ly">${esc(test.layer)}</span>`:""}<span class="chip">${esc(test.area)}</span> · traced through all 12 agents for this test alone</div>
   <div class="layout"><div class="nav">${nav}</div>
-    <div class="panel"><div class="p-head"><span class="p-id">${p.id}</span><h3>${esc(p.a)}</h3>${head}</div>
-      <div class="io in"><div class="io-h">▸ INPUT — what it received</div>${inHtml}</div>
-      <div class="arrow">↓ passes to output ↓</div>
-      <div class="io out"><div class="io-h">▪ OUTPUT — what it produced</div>${outHtml}</div>
+    <div class="panel">
+      <div class="p-head"><span class="p-id">${esc(p.id)}</span><h3>${esc(p.a)}</h3>${head}</div>
+      <div class="io in"><div class="io-h">▸ INPUT — what it received ${fromLbl}</div>${tr.in}</div>
+      <div class="arrow">↓</div>
+      <div class="io out"><div class="io-h">▪ OUTPUT — what it produced ${toLbl}</div>${tr.out}</div>
+      <div class="stepnav">
+        ${prev?`<button onclick="go('#/test/${test.id}/${prev.id}')"><span class="lbl">◀ previous agent</span>${esc(prev.a)}</button>`:`<button disabled><span class="lbl">◀ previous agent</span>start of chain</button>`}
+        ${next?`<button style="text-align:right" onclick="go('#/test/${test.id}/${next.id}')"><span class="lbl">next agent ▶</span>${esc(next.a)}</button>`:`<button disabled style="text-align:right"><span class="lbl">next agent ▶</span>end of chain</button>`}
+      </div>
     </div></div>`;
 }
 
-/* ── flat runs view — the original Runs Explorer, still here ────────────── */
-function renderRuns(){
-  const total=ALL.filter(x=>x.n).length;
-  const rows=RUNS.map(r=>{
-    const n=(r.done||[]).length, pct=Math.round(n/total*100);
-    return `<button class="cyc" style="grid-template-columns:170px 1fr 170px 140px" onclick="location.hash='#/run/${r.runId}'">
-      <div><div class="cyc-id" style="color:var(--accent);font-weight:600">${esc(r.runId)}</div><div class="cyc-m">${esc(r.epicKey)}</div></div>
-      <div><div class="cyc-n" style="font-size:14px">${esc(r.name)}</div><div class="cyc-m">${esc(r.source)} · started ${esc(r.started)}</div></div>
-      <div class="cyc-stats"><span><b>${n}</b> phases with output</span><div class="agbar"><i class="ok" style="flex:${pct||1}"></i><i style="flex:${100-pct||1}"></i></div></div>
-      <div>${statusPill(r)}</div></button>`;
-  }).join("");
-  return `<div class="crumb"><button onclick="location.hash='#/'">Cycles</button><span class="sep">/</span><span>All runs</span></div>
-  <h1>Runs Explorer</h1><p class="subt">Every run across every cycle, flat. Each one is a trace — open it to watch the data flow agent by agent, input to output. Shareable: <span class="mono">#/run/&lt;run-id&gt;</span> jumps straight to a flow.</p>
-  <div class="cycles" style="margin-top:16px">${rows}</div>`;
-}
-
-function onSearch(v){const app=document.getElementById("app");const inp=document.getElementById("q");const pos=inp?inp.selectionStart:null;app.innerHTML=renderCycles(v);const q2=document.getElementById("q");if(q2){q2.focus();if(pos!=null)q2.setSelectionRange(pos,pos);}}
+/* ── routing ───────────────────────────────────────────────────────────── */
+function paint(html){document.getElementById("app").innerHTML=html;}
+function go(h){location.hash=h;}
+function onSearch(v){const pos=(document.getElementById("q")||{}).selectionStart;paint(renderExplorer(v));const q=document.getElementById("q");if(q){q.focus();if(pos!=null)q.setSelectionRange(pos,pos);}}
 function route(){
-  const h=location.hash||"#/";
-  let out,m;
-  if((m=h.match(/^#\/run\/([^/]+)(?:\/(.+))?$/))) out=renderRun(decodeURIComponent(m[1]),m[2]?decodeURIComponent(m[2]):null);
-  else if((m=h.match(/^#\/cycle\/(.+)$/)))        out=renderCycle(decodeURIComponent(m[1]));
-  else if(h==="#/runs")                           out=renderRuns();
-  else                                            out=renderCycles("");
-  document.getElementById("app").innerHTML=out;
+  const h=location.hash||"#/";let m;
+  if((m=h.match(/^#\/test\/([^/]+)(?:\/(.+))?$/)))  paint(renderTest(decodeURIComponent(m[1]),m[2]?decodeURIComponent(m[2]):null));
+  else if((m=h.match(/^#\/cycle\/(.+)$/)))          {FILTER={type:"all",area:"all"};paint(renderCycle(decodeURIComponent(m[1])));}
+  else if((m=h.match(/^#\/milestone\/(.+)$/)))      paint(renderMilestone(decodeURIComponent(m[1])));
+  else                                              paint(renderExplorer(""));
   window.scrollTo(0,0);
 }
 window.addEventListener("hashchange",route);route();
