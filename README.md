@@ -45,7 +45,7 @@ scope-bleed. Full write-up: [`docs/agents-guide.html`](docs/agents-guide.html).
 | `skills/` | reusable capabilities (selector-verify, gherkin-authoring, tracker-publish, evidence, perf-pull) |
 | `commands/` | the orchestrator + resume + daily-report entry points |
 | `pipeline/` | the phase runner (`orchestrator.mjs`), phase modules, and the tag engine (`lib/tags.mjs`) |
-| `dashboard/` | the **Runs Explorer** — a traces-style, searchable flow board (`dashboard/index.html`) |
+| `dashboard/` | the **Cycles Explorer** — cycles → test flows & cases → per-agent trace, plus the flat Runs Explorer (`dashboard/index.html`) |
 | `docs/` | the architecture guide |
 | `tests/features/` | sample Gherkin (playwright-bdd) for the demo app |
 | `conventions.md` | the standard the agents write to |
@@ -59,7 +59,17 @@ node pipeline/orchestrator.mjs DEMO-101 --status
 node pipeline/orchestrator.mjs DEMO-101 --approve CP1
 npx playwright test --grep "@area:checkout"     # pick tests by tag
 ```
-Open `dashboard/index.html` for the Runs Explorer (search runs, open a run's phase-by-phase flow).
+Open `dashboard/index.html` for the **Cycles Explorer**. It drills down in three levels:
+
+| Route | Level | Shows |
+|---|---|---|
+| `#/` | **Cycles** | every cycle that has been run, its test-case count, findings, and which of the 12 agents produced output |
+| `#/cycle/<cycle-id>` | **Flows & cases** | the test cases in that cycle, all 12 agents with their result, and the findings table |
+| `#/run/<run-id>/<agent-id>` | **Agent trace** | one agent, expanded into what it received and what it produced |
+
+`#/runs` still opens the flat Runs Explorer, and any `#/run/<run-id>` link is shareable — it jumps straight to that flow, like a trace URL.
+
+All 12 agents are visible in the trace nav: the 8 gated pipeline agents, and the 4 async tracks (Performance & Logs, Design Parity, AI Eval Analyst, Drift Detector) which report but never block a merge. An async track with nothing configured for the target is shown as **not-run with its reason**, never as a pass.
 
 ## Skills demonstrated
 
