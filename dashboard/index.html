@@ -346,6 +346,102 @@ function inJson(t,id){
   return outJson(t,prev.id);
 }
 
+
+/* ── traces from real artifacts ───────────────────────────────────────────
+   When a run has been exported, a trace panel is rendered from the artifact the
+   phase actually wrote, sliced to the test you clicked. The hand-authored
+   builders below are only for the bundled example; pointing them at exported
+   data was reading fields that a real artifact does not have. */
+function liveArtifact(test, phaseId) {
+  const byRun = (LIVE && LIVE.traces && LIVE.traces[test.cycle]) || null;
+  const env = byRun && byRun[phaseId];
+  return env ? (env.schema === "aqa.artifact" ? env.data : env) : null;
+}
+
+/** The part of a phase artifact that belongs to THIS test, when it has one. */
+function sliceFor(phaseId, a, id) {
+  if (!a) return null;
+  const find = (arr) => (Array.isArray(arr) ? arr.find((x) => x.id === id) : null);
+  switch (phaseId) {
+    case "01-scope":        return find(a.in_scope) || find(a.deferred) || null;
+    case "02-architecture": return find(a.objectives);
+    case "03-case-design":  return find(a.cases);
+    case "3b-publish":      return (a.writes_pending || []).find((w) => String(w.payload && w.payload.summary).startsWith(id)) || null;
+    case "04-generate":     return find(a.runnable) || find(a.skipped) || null;
+    case "05-targeted-run": return find(a.results);
+    case "06-self-heal":    return find(a.triaged);
+    case "07-regression":   return find(a.results);
+    default:                return null;
+  }
+}
+
+function kvTable(o) {
+  if (!o || typeof o !== "object") return "";
+  const rows = Object.entries(o)
+    .filter(([, v]) => v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0))
+    .map(([k, v]) => {
+      const val = Array.isArray(v)
+        ? v.map((x) => `<div class="mono" style="margin:1px 0">${esc(typeof x === "object" ? JSON.stringify(x) : x)}</div>`).join("")
+        : typeof v === "object"
+          ? `<span class="mono">${esc(JSON.stringify(v))}</span>`
+          : `<span class="mono">${esc(v)}</span>`;
+      return `<tr><td style="white-space:nowrap;color:var(--muted)">${esc(k)}</td><td>${val}</td></tr>`;
+    })
+    .join("");
+  return rows ? `<table><tbody>${rows}</tbody></table>` : "";
+}
+
+/** Headline sentence per phase, from the real artifact. */
+function liveHeadline(phaseId, a, test) {
+  if (!a) return "This phase produced no artifact in this run.";
+  if (a.status === "not_configured" || a.status === "not_applicable")
+    return `<div class="banner warn"><b>${esc(a.status.replace("_", " "))}</b>${esc(a.reason || "")}</div>`;
+  switch (phaseId) {
+    case "00-preflight":    return `<p>Probed <b>${(a.routes || []).length}</b> route(s); auth ${a.auth && a.auth.obtained ? "obtained" : "not obtained"}. <b>${(a.findings || []).length}</b> finding(s).</p>`;
+    case "01-scope":        return `<p><b>${(a.in_scope || []).length}</b> in scope, <b>${(a.deferred || []).length}</b> deferred, confidence <b>${a.confidence}</b>. ${esc(a.rationale || "")}</p>`;
+    case "02-architecture": return `<p><b>${(a.objectives || []).length}</b> objective(s). ${(a.risks || []).length ? "Risks: " + a.risks.map(esc).join("; ") : "No risks flagged."}</p>`;
+    case "03-case-design":  return `<p><b>${a.scenarios}</b> scenario(s) in <span class="mono">${esc(a.file || "")}</span>; <b>${(a.untagged || []).length}</b> untagged.</p>`;
+    case "3b-publish":      return `<p><b>${a.testcases}</b> payload(s) built. <span class="pill ${a.sent ? "" : "ok"}">sent = ${a.sent}</span>${a.dry_run ? " (dry-run)" : ""}</p>`;
+    case "04-generate":     return `<p><b>${a.step_defs}</b> runnable, <b>${(a.skipped || []).length}</b> skipped with a reason.</p>`;
+    case "05-targeted-run": return `<p><b>${a.ran}</b> ran · <b>${a.passed}</b> passed · <b>${a.failed}</b> failed · <b>${a.skipped}</b> skipped.</p>`;
+    case "06-self-heal":    return `<p><b>${a.failures}</b> failure(s) · <b>${a.bugs_staged}</b> bug(s) staged · <b>${a.known_flaky_skipped}</b> environment.</p>`;
+    case "07-regression":   return `<p><b>${a.passed}</b>/<b>${a.total}</b> passed.</p>`;
+    case "08-review":       return `<p><b>${(a.findings || []).length}</b> finding(s) · <b>${a.blocking}</b> blocking.</p>`;
+    case "09-finalise":     return `<p><span class="mono">${esc(a.file || "")}</span> · coverage <b>${esc((a.entry || {}).coverage || "—")}</b>${a.note ? `<br><span class="sub2">${esc(a.note)}</span>` : ""}</p>`;
+    case "a09-performance": return `<p><b>${(a.steps || []).length}</b> step(s) measured · <b>${(a.findings || []).length}</b> breach(es).</p>`;
+    case "a12-drift":       return `<p><b>${a.checked}</b> checked · <b>${a.verified}</b> verified · <b>${a.drifted}</b> drifted · <b>${a.not_checked}</b> unchecked.</p>`;
+    default:                return `<p>Artifact produced.</p>`;
+  }
+}
+
+function liveTrace(test, phaseId) {
+  const a = liveArtifact(test, phaseId);
+  const prev = prevPhase(phaseId);
+  const prevA = prev ? liveArtifact(test, prev.id) : null;
+  const mine = sliceFor(phaseId, a, test.id);
+  const prevMine = prev ? sliceFor(prev.id, prevA, test.id) : null;
+
+  const inHtml = prev
+    ? (prevA
+        ? `<p>What <b>${esc(prev.a)}</b> produced${prevMine ? ` for <span class="mono">${esc(test.id)}</span>` : ""}, handed straight over.</p>` +
+          (prevMine ? kvTable(prevMine) : liveHeadline(prev.id, prevA, test))
+        : `<p class="sub2">The previous phase produced no artifact in this run, so nothing was handed over.</p>`)
+    : `<p>The written intent for this flow, and the running app it was probed against.</p>` +
+      (a && a.app ? kvTable(a.app) : "");
+
+  const outHtml = a
+    ? liveHeadline(phaseId, a, test) +
+      (mine ? `<div class="sub">For ${esc(test.id)}</div>${kvTable(mine)}` : "") +
+      (phaseId === "05-targeted-run" && mine && mine.checks
+        ? `<div class="sub">Checks</div><table><thead><tr><th>Check</th><th>Expected</th><th>Actual</th><th></th></tr></thead><tbody>${mine.checks
+            .map((c) => `<tr><td>${esc(c.check)}</td><td class="mono">${esc(c.expected)}</td><td class="mono">${esc(c.actual)}</td><td>${c.ok ? '<span class="pill ok">ok</span>' : '<span class="pill fail">differs</span>'}</td></tr>`)
+            .join("")}</tbody></table>`
+        : "")
+    : `<div class="banner warn"><b>Not reached in this run</b>No artifact was written for this phase.</div>`;
+
+  return { in: inHtml, out: outHtml, inJson: prev ? prevA : (a && a.app) || null, outJson: a };
+}
+
 /* ── per-test trace builders ────────────────────────────────────────────
    Each builder renders ONE agent for ONE test. The input is always framed
    as what arrived from the agent before it, so the chain is explicit.
@@ -943,6 +1039,7 @@ function renderCycle(id){
 
 /* ── LEVEL 4 · one test, traced agent by agent ─────────────────────────── */
 function traceFor(test,phaseId){
+  if (LIVE) return liveTrace(test, phaseId);          // real artifacts win
   const bespoke=(test.trace||{})[phaseId];
   if(bespoke)return bespoke;
   const B=BUILD[phaseId];
@@ -950,6 +1047,14 @@ function traceFor(test,phaseId){
 }
 const ASYNC_FIELD={"a09-performance":"perf","a10-design-parity":"parity","a11-ai-eval":"aieval","a12-drift":"drift"};
 function phaseStatus(test,p){
+  if (LIVE) {
+    const c = CYCLES.find((x) => x.id === test.cycle) || {};
+    if ((c.na || []).includes(p.id)) return "na";
+    if ((c.ran || []).includes(p.id)) {
+      return p.id === "05-targeted-run" && VER(test.verdict) === "f" ? "fail" : "ok";
+    }
+    return c.awaiting && p.gate === c.awaiting ? "gate" : "";
+  }
   if((test.na||[]).includes(p.id))return "na";
   // An async track is "ran" exactly when it has data for this test — the dot can
   // never claim a track ran while the panel says it was not configured.
