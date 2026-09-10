@@ -31,7 +31,7 @@ h1{font-size:clamp(21px,2.8vw,28px);line-height:1.12;margin:0 0 5px;letter-spaci
 .covbar>i{display:block;height:100%;background:var(--accent)}
 
 /* cycle tiles */
-.cycles{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:11px;margin-top:12px}
+.cycles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:11px;margin-top:12px}
 .cyc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;box-shadow:var(--shadow);text-align:left;width:100%;font:inherit;color:inherit;display:flex;flex-direction:column;gap:8px}
 .cyc:hover{border-color:var(--accent)}
 .cyc-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
@@ -83,14 +83,15 @@ tr.clk{cursor:pointer}tr.clk:hover td{background:var(--accent-soft)}
 .chip.ly{background:var(--run-soft);border-color:var(--run-soft);color:var(--run)}
 
 /* trace page */
-.layout{display:grid;grid-template-columns:250px 1fr;gap:18px;align-items:start;margin-top:14px}
+.layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;align-items:start;margin-top:14px}
+.layout>*{min-width:0}
 @media(max-width:880px){.layout{grid-template-columns:1fr}}
-.nav{position:sticky;top:12px;display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 24px);overflow-y:auto}
+.nav{position:sticky;top:12px;display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 24px);overflow-y:auto;min-width:0}
 .nav-item{display:flex;align-items:center;gap:8px;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;cursor:pointer;color:var(--ink);font:inherit;font-size:12.5px}
 .nav-item:hover{border-color:var(--accent)}.nav-item.active{background:var(--accent-soft);border-color:var(--accent)}
 .ni-dot{width:9px;height:9px;border-radius:50%;background:var(--stub);flex:none;opacity:.35}.ni-dot.ok{background:var(--ok);opacity:1}.ni-dot.gate{background:var(--gate);opacity:1}.ni-dot.fail{background:var(--fail);opacity:1}
 .ni-n{font-family:var(--mono);font-size:10px;color:var(--faint);width:15px;flex:none}
-.ni-a{font-weight:600;flex:1;line-height:1.25}
+.ni-a{font-weight:600;flex:1;line-height:1.25;min-width:0;overflow-wrap:anywhere}
 .ni-g{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:10px;background:var(--gate-soft);color:var(--gate)}.ni-g.ok{background:var(--ok-soft);color:var(--ok)}
 .nav-lbl{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin:12px 0 3px;padding-left:3px}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
@@ -118,6 +119,35 @@ ol,ul{margin:6px 0;padding-left:20px}li{margin:4px 0;font-size:12.8px}
 .banner.warn{border-left-color:var(--gate);background:var(--gate-soft)}
 .banner.bad{border-left-color:var(--fail);background:var(--fail-soft)}
 .banner b{display:block;margin-bottom:2px}
+
+/* agent brief */
+.brief{border:1px solid var(--border);border-radius:12px;background:var(--surface2);padding:13px 15px;margin:10px 0 14px}
+.brief-h{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.brief-does{font-size:13.8px;line-height:1.55;margin:0 0 10px}
+.brief-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px;border-top:1px solid var(--border);padding-top:10px}
+.brief-cell .k{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:2px}
+.brief-cell .v{font-size:12.4px;line-height:1.5;color:var(--muted)}
+.brief-cell.never .k{color:var(--fail)}
+.brief-cell .v code,.brief-cell .v .mono{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
+
+/* expandable io */
+details.io{border:1px solid var(--border);border-radius:12px;margin:9px 0;padding:0;overflow:hidden}
+details.io.in{background:var(--surface2)}details.io.out{background:var(--accent-soft)}
+details.io>summary{list-style:none;cursor:pointer;padding:11px 15px;display:flex;flex-wrap:wrap;gap:7px;align-items:center;font-size:10.5px;font-weight:700;letter-spacing:.05em;color:var(--muted);user-select:none}
+details.io>summary::-webkit-details-marker{display:none}
+details.io>summary:hover{color:var(--accent)}
+details.io>summary .tw-caret{font-size:9px;color:var(--faint);transition:transform .14s;display:inline-block;width:9px}
+details.io[open]>summary .tw-caret{transform:rotate(90deg)}
+details.io>summary .peek{font-weight:500;letter-spacing:0;text-transform:none;font-size:11.5px;color:var(--faint);margin-left:auto}
+details.io[open]>summary .peek{display:none}
+.io-body{padding:0 15px 13px}
+details.raw{border:1px solid var(--border);border-radius:9px;background:var(--surface);margin-top:10px;overflow:hidden}
+details.raw>summary{list-style:none;cursor:pointer;padding:7px 11px;font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--muted);display:flex;gap:7px;align-items:center;user-select:none}
+details.raw>summary::-webkit-details-marker{display:none}
+details.raw>summary:hover{color:var(--accent)}
+details.raw>summary .tw-caret{font-size:9px;color:var(--faint);transition:transform .14s;display:inline-block;width:9px}
+details.raw[open]>summary .tw-caret{transform:rotate(90deg)}
+details.raw pre{margin:0;border:none;border-top:1px solid var(--border);border-radius:0;background:transparent;font-size:11px}
 .foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--border);font-size:11.5px;color:var(--faint)}
 </style></head><body>
 <div class="wrap" id="app"></div>
@@ -156,6 +186,164 @@ const byId=id=>ALL.find(p=>p.id===id);
 const prevPhase=id=>{const i=PHASES.findIndex(p=>p.id===id);return i>0?PHASES[i-1]:null;};
 const nextPhase=id=>{const i=PHASES.findIndex(p=>p.id===id);return i>=0&&i<PHASES.length-1?PHASES[i+1]:null;};
 
+
+/* ── what each agent is FOR ──────────────────────────────────────────────
+   Taken from the agent definitions in agents/*.md, including their explicit
+   "You do NOT" clauses — the narrow remit is the design, not an omission.
+   ──────────────────────────────────────────────────────────────────────── */
+const AGENT_INFO={
+"00-preflight":{
+ does:"Checks the prerequisites, then reconciles the written intent against every place it is written down — tracker, docs, spec — and probes the <b>running app</b> for the controls this flow needs.",
+ solves:"Intent drifts. The epic, the runbook and the app rarely agree, and nobody notices until a test fails for the wrong reason. Pre-flight surfaces the disagreement before a single case is written.",
+ never:"Resolve a disagreement itself, or invent a selector for something it could not find.",
+ out:"a probe report + surfaced conflicts"},
+"01-scope":{
+ does:"Takes one scope link — a tracker epic, a doc, or a repo path — traverses it, and sorts every item into exactly one bucket: <b>in scope</b>, <b>deferred</b>, or <b>out of scope</b>. Emits a 0–1 confidence with a one-line rationale.",
+ solves:"Deciding what is worth testing is the judgement call that sets the cost of the whole cycle. Done by hand it drifts with whoever is doing it; done here every item lands in one bucket with a written reason, and low confidence forces an early human review instead of a bad plan.",
+ never:"Write tests, plans or scenarios; touch the tracker; or resolve intent-vs-app disagreements — those go to CP1.",
+ out:"<span class='mono'>artifacts/01-scope.json</span>"},
+"02-architecture":{
+ does:"Turns the classified scope into a <b>test plan</b>: routes each item to a track (UI, API, performance, pipeline), states one testable objective per item, plans the positive / negative / edge split, and names the risks.",
+ solves:"Cases written without a plan cluster on the happy path. Planning the split first is what makes the negative and edge coverage deliberate rather than whatever came to mind. On a large scope it proposes a <b>pilot</b> — the smallest well-understood area to prove the approach before spending the rest.",
+ never:"Write cases or scenarios, or touch code or the tracker.",
+ out:"<span class='mono'>artifacts/02-architecture.json</span> → gate CP1"},
+"03-case-design":{
+ does:"Writes each objective as a stakeholder-readable Gherkin scenario — Given / When / Then, plain language, observable outcomes — co-located with its future step file and prefixed with its tracker key.",
+ solves:"A test case and a spec are usually two documents that drift apart. A tagged scenario is both at once: a business reader can check it, and a runner can execute it. Every scenario is tagged <span class='mono'>@area</span> + <span class='mono'>@type</span> so any slice — one feature, all the negatives — is pickable by tag rather than by hand.",
+ never:"Write step definitions, verify selectors live, or create tickets.",
+ out:"<span class='mono'>artifacts/03-cases.json</span> + <span class='mono'>.feature</span> files → gate CP2"},
+"3b-publish":{
+ does:"Turns approved scenarios into test-case tickets in whatever tracker is configured. When / And become Steps, Then becomes Expected, and the summary carries the key.",
+ solves:"Getting cases into the tracker is the tedious copy-paste that gets skipped under pressure, which is how a suite loses its traceability. It is <b>dry-run by default</b>: the exact payload is emitted and the agent stops. Nothing is created until a human confirms — so a bad plan cannot pollute a real tracker.",
+ never:"Design or edit scenarios, write code, or merge.",
+ out:"<span class='mono'>artifacts/3b-publish.json</span> · sent = 0 in dry-run"},
+"04-generate":{
+ does:"Writes the step definitions that make each Gherkin step actually run, mapping every Given / When / Then to a real page-object call, then compiles the specs.",
+ solves:"This is the long pole, and the place where generated tests usually lie. Every selector is <b>verified against the running app</b> before it is trusted; if an element is absent the agent emits a dated skip naming the blocking ticket rather than guessing a selector that will fail later for an unrelated reason.",
+ never:"Edit shared page objects, self-heal, or merge. New selectors go inline with a fixed annotation.",
+ out:"<span class='mono'>.steps.ts</span> + <span class='mono'>artifacts/04-generate.json</span> → gate CP3"},
+"05-targeted-run":{
+ does:"Runs only the specs this cycle produced, against the live app — not the whole suite.",
+ solves:"Running everything to learn about the few you just wrote wastes the feedback loop. This is the narrow run that tells you whether the new work stands up, before regression tells you whether it broke anything else.",
+ never:"Fix anything. A failure here is evidence, handed to Triage.",
+ out:"a per-spec result with evidence → gate CP4"},
+"06-self-heal":{
+ does:"Classifies every failure into one of three buckets — <b>known-flaky</b>, <b>test defect</b>, or <b>product bug</b> — then fixes only the test defects, in at most 3 cycles.",
+ solves:"The expensive mistake in QA is filing a test's own bug against the product. That burns a developer's morning and erodes trust in the suite. Classifying first means a stale selector gets fixed and a real defect gets raised with evidence. The cap of 3 cycles exists so it cannot grind, and it will <b>never weaken a test to force green</b> — after 3 tries it stops and reclassifies.",
+ never:"Design cases, run full regression, review, or merge.",
+ out:"<span class='mono'>artifacts/06-self-heal.json</span>"},
+"07-regression":{
+ does:"Runs the whole suite, to prove this cycle's work did not break anything already covered.",
+ solves:"A green new test says nothing about the ninety that existed before it. This is the step that earns the merge.",
+ never:"Fix or triage. Failures go back to Triage.",
+ out:"a full-suite result"},
+"08-review":{
+ does:"Reviews the generated tests the way a person reviews a pull request, against <span class='mono'>conventions.md</span>: tracker key present, tags present, page-object freeze respected, no bare 2xx assertion, selectors live-verified.",
+ solves:"Generated code passes tests long before it is code you would want to maintain. This is the checklist that keeps a suite readable a year later — and an untagged scenario is a <b>blocking</b> finding, because an untagged test cannot be picked by anyone.",
+ never:"Merge, or fix its own findings — Triage owns fixes.",
+ out:"<span class='mono'>artifacts/08-review.json</span> + a dry-run PR comment → gate CP5"},
+"09-finalise":{
+ does:"Maintains the <b>Feature Registry</b> — a git-versioned knowledge base, one file per feature, recording <span class='mono'>intent</span> (where it is specified), <span class='mono'>truth</span> (routes and endpoints in the live app), <span class='mono'>ours</span> (which tests cover it) and when it was last verified against the running app.",
+ solves:"Test coverage is normally invisible: nobody can answer \"what do we actually cover, and is it still true?\" without reading the suite. The registry answers both, in git, and its freshness date is what the Drift Detector re-checks later.",
+ never:"Decide scope, write tests, or send anything external.",
+ out:"<span class='mono'>kb/&lt;feature&gt;.yaml</span> + a coverage delta"},
+"a09-performance":{
+ does:"Pulls run history and per-step durations, summarises where the time goes and how it scales, and correlates with logs when a run looks anomalous.",
+ solves:"Performance arguments stall on whether a number is bad. Budgets are declared <i>before</i> the run, so a breach is a fact rather than an opinion — and a bug is raised only on a clear breach, with evidence.",
+ never:"Gate or block a merge, or file known non-determinism as a bug. Runtime is driven by load × iterations, not one dimension alone.",
+ out:"<span class='mono'>out/performance-&lt;date&gt;.json</span> · report-only"},
+"a10-design-parity":{
+ does:"Drives a design prototype and the live app through the same route and state, captures them side by side, and compares across visual/layout, flow, copy, and states — empty, error, loading.",
+ solves:"Design review happens once, before the build, and then reality drifts. This makes the prototype a testable artefact rather than a picture, and routes what it finds to the <b>design team</b> — a copy change or a wrong empty state is not a product bug and should not sit in a developer's queue.",
+ never:"File product bugs, block the functional pipeline, or treat every pixel diff as a defect. A human triages regression versus deliberate evolution.",
+ out:"<span class='mono'>out/design-parity-&lt;date&gt;.json</span> · non-blocking"},
+"a11-ai-eval":{
+ does:"Scores an AI assistant against a human-approved answer key. Per case it asks, fetches the trace — the answer, every tool call with args and result, span statuses, latency — then scores twice: LLM-as-judge on correctness, faithfulness, coherence and relevance, plus deterministic checks (expected tools present, no forbidden tools, no errored spans, latency inside budget).",
+ solves:"An AI feature cannot be tested with pass/fail assertions; the same question has many acceptable answers. Quality is a <b>score against a baseline</b>, and the regression is the thing worth alerting on. Connect whichever tracer the organisation already runs — LangGraph, Phoenix, LangSmith, or anything OpenTelemetry-compatible.",
+ never:"Gate a merge, edit the assistant, author ground truth unilaterally, or fabricate a trace or score. A low score is surfaced, never auto-filed as a product bug.",
+ out:"<span class='mono'>out/ai-evals-&lt;date&gt;.json</span> · non-blocking"},
+"a12-drift":{
+ does:"On an app change or a deploy, re-verifies each Feature Registry anchor — routes, API shapes, DOM anchors — against the <b>live app</b>, and stamps the entry fresh only when the re-check actually passes.",
+ solves:"A knowledge base that is never re-checked becomes confidently wrong, which is worse than having none. This is what keeps \"what we cover\" honest as the app moves underneath it. What it cannot verify, it reports as unchecked <i>with the reason</i> rather than stamping fresh.",
+ never:"Write tests, edit page objects, or raise a product bug itself. It flags; a human decides whether it is a product bug or a stale registry.",
+ out:"<span class='mono'>out/drift-&lt;date&gt;.json</span> · non-blocking"},
+};
+
+/* ── raw artifact payloads ───────────────────────────────────────────────
+   An agent's INPUT payload IS the previous agent's OUTPUT payload — the
+   chain is not described, it is the same object handed along. Async tracks
+   are fed by their own trigger, so they carry their own config instead.
+   ──────────────────────────────────────────────────────────────────────── */
+const notRun=t=>({status:"not_reached", reason:"cycle paused at a human gate", gate:(CYCLES.find(c=>c.id===t.cycle)||{}).awaiting||null});
+const reached=(t,id)=>(t.reached||[]).includes(id);
+
+const OUT_JSON={
+"00-preflight":t=>({
+  scope_link:t.spec.ref||null, deps:"ok", app_reachable:true,
+  sources:(t.sources||[]).map(x=>({source:x.from, agrees:!!x.agrees, conflict:x.conflict||null})),
+  elements:(t.probe||[]).map(x=>({looked_for:x.what, found:x.found===null?"ambiguous":x.found, evidence:x.evidence})),
+  findings:t.probeTitle?[{id:(t.probeTitle.split(" ")[0]||"PRE-01"), severity:t.probeSev==="bad"?"blocking":"info"}]:[]}),
+"01-scope":t=>({
+  in_scope:t.scope.in?[{behaviour:t.title, area:t.area}]:[],
+  deferred:t.scope.in?[]:[{behaviour:t.title, why:t.scope.why}],
+  out_scope:[], confidence:Number(t.scope.confidence),
+  rationale:t.scope.why,
+  findings:t.scope.finding?[{id:t.scope.finding.id, blocking:true}]:[]}),
+"02-architecture":t=>({
+  objectives:[{objective:t.objective, track:t.layer, type:t.type, area:t.area}],
+  pilot:(CYCLES.find(c=>c.id===t.cycle)||{}).name||null,
+  risks:t.scope.finding?[t.scope.finding.id+" — selector not uniquely addressable"]:[]}),
+"03-case-design":t=>({
+  features:1, scenarios:1,
+  file:t.gherkin?"tests/features/"+t.area.replace(/ /g,"-")+".feature":null,
+  scenario:{key:t.id, title:t.title, expected:t.expected||t.objective},
+  tags:["@area:"+t.area,"@type:"+t.type].concat(t.layer?["@layer:"+t.layer]:[]),
+  findings:t.tagNote?[{id:"TAG-01", note:"scenario tagged "+t.type+" by intent but stamped lifecycle by the engine"}]:[]}),
+"3b-publish":t=>reached(t,"3b-publish")?({
+  sent:0, dry_run:true,
+  writes_pending:[{endpoint:"${TRACKER_BASE_URL}/api/testcases",
+    payload:{summary:t.id+" "+t.title, labels:["area:"+t.area,"type:"+t.type,"aqa-generated"], expected:t.expected||t.objective}}]}):notRun(t),
+"04-generate":t=>reached(t,"04-generate")?({
+  step_defs:1, selectors_verified:(t.probe||[]).filter(x=>x.found===true).length, new_page_objects:0,
+  files:["tests/features/"+t.area.replace(/ /g,"-")+".steps.ts"]}):notRun(t),
+"05-targeted-run":t=>t.exec?({
+  ran:1, passed:VER(t.verdict)==="p"?1:0, failed:VER(t.verdict)==="f"?1:0,
+  duration:t.duration||null, command:t.exec.cmd,
+  steps:t.exec.steps.map(x=>({step:x[0], observed:x[1]})),
+  verdict:t.verdict, executed_by:t.source==="manual"?"human":"agent"}):notRun(t),
+"06-self-heal":t=>reached(t,"06-self-heal")?({
+  failures:t.heal?1:0, healed:t.heal?1:0, bugs_staged:0, known_flaky_skipped:0,
+  classification:t.heal?"test_defect":"none", cycles_used:t.heal?1:0, cap:3}):notRun(t),
+"07-regression":t=>reached(t,"07-regression")?({total:140, passed:140, skipped:0}):notRun(t),
+"08-review":t=>reached(t,"08-review")?({findings:t.review?(t.review.match(/<li>/g)||[]).length:0, blocking:0}):notRun(t),
+"09-finalise":t=>reached(t,"09-finalise")?({kb_file:"kb/"+t.area.replace(/ /g,"-")+".yaml", coverage:"covered", verified_against_live:(CYCLES.find(c=>c.id===t.cycle)||{}).ended||null}):notRun(t),
+"a09-performance":t=>t.perf?({agent:"performance-analyst", track:"async · non-blocking", gates:false,
+  steps:t.perf.rows.map(r=>({step:r[0], n:Number(r[1]), p50:Number(r[2]), p95:Number(r[3]), budget:Number(r[4]), breach:r[5]})),
+  findings:t.perf.rows.filter(r=>r[5]).map(r=>({id:"PERF-"+r[0], severity:"medium", evidence:"p95 "+r[2+1]+"ms over declared budget "+r[4]+"ms"}))
+  }):({status:"not_configured", reason:"no budget declared for the steps this flow touches", gates:false}),
+"a10-design-parity":t=>t.parity?({agent:"design-parity-analyst", diffs:[]}):({status:"not_configured", reason:"no prototype source connected for this target", gates:false, note:"reported as not-run, never as a pass"}),
+"a11-ai-eval":t=>t.aieval?({agent:"eval-analyst", scores:[]}):({status:"not_applicable", reason:"this flow has no AI assistant and no trace source", gates:false, note:"skipped honestly rather than reported as passing"}),
+"a12-drift":t=>t.drift?({agent:"drift-detector", track:"async · non-blocking",
+  checked:t.drift.rows.length,
+  verified:t.drift.rows.filter(r=>r[1]==="verified").length,
+  drifted:t.drift.rows.filter(r=>r[1]==="drifted").length,
+  not_checked:t.drift.rows.filter(r=>r[1]==="not-checked").length,
+  checks:t.drift.rows.map(r=>({anchor:r[0], status:r[1], evidence:r[2]}))
+  }):({status:"not_configured", reason:"no registry entry recorded for this flow yet", gates:false}),
+};
+function outJson(t,id){try{const f=OUT_JSON[id];return f?f(t):null;}catch(e){return null;}}
+function inJson(t,id){
+  const p=byId(id);
+  if(p&&p.kind==="async"){
+    if(id==="a09-performance")   return t.perf?{trigger:"scheduled", budgets_declared:t.perf.budgets.split("\n")}:{trigger:"scheduled", budgets_declared:[]};
+    if(id==="a12-drift")         return t.drift?{trigger:"app change or deploy", registry_anchors:t.drift.anchors.split("\n")}:{trigger:"app change or deploy", registry_anchors:[]};
+    if(id==="a10-design-parity") return {trigger:"manual", prototype_source:null, live_app:(CYCLES.find(c=>c.id===t.cycle)||{}).target||null};
+    return {trigger:"manual", golden_dataset:null, trace_endpoint:null};
+  }
+  const prev=prevPhase(id);
+  if(!prev) return {scope_link:t.spec.ref||null, source:t.spec.source, spec:t.spec.text};
+  return outJson(t,prev.id);
+}
 
 /* ── per-test trace builders ────────────────────────────────────────────
    Each builder renders ONE agent for ONE test. The input is always framed
@@ -789,15 +977,43 @@ function renderTest(testId,phaseId){
     p.gate?`<span class="pill ${st==="gate"?"gate":"ok"}">${st==="gate"?"⏸ awaiting "+p.gate:"✓ "+p.gate}</span>`:"",
   ].filter(Boolean).join("");
 
+  // What this agent is for, independent of any one test — so a reader can
+  // understand the agent on its own, not only what it did here.
+  const info=AGENT_INFO[cur];
+  const brief=info?`<div class="brief">
+      <div class="brief-h">What this agent does</div>
+      <p class="brief-does">${info.does}</p>
+      <div class="brief-grid">
+        <div class="brief-cell"><span class="k">The problem it solves</span><span class="v">${info.solves}</span></div>
+        <div class="brief-cell never"><span class="k">It never</span><span class="v">${info.never}</span></div>
+        <div class="brief-cell"><span class="k">Produces</span><span class="v">${info.out}</span></div>
+      </div></div>`:"";
+
+  const json=(o)=>o==null?"—":esc(JSON.stringify(o,null,2));
+  const raw=(label,o)=>`<details class="raw"><summary><span class="tw-caret">▶</span>${esc(label)}</summary><pre>${json(o)}</pre></details>`;
+  const peek=(o)=>{
+    if(o==null)return "";
+    const k=Object.keys(o);
+    return `<span class="peek">${k.length} field${k.length!==1?"s":""} · ${esc(k.slice(0,3).join(", "))}${k.length>3?"…":""}</span>`;
+  };
+  const ji=inJson(test,cur), jo=outJson(test,cur);
+
   return `<div class="crumb"><button onclick="go('#/')">Runs Explorer</button><span class="sep">/</span><button onclick="go('#/milestone/${m.id}')">${esc(m.name)}</button><span class="sep">/</span><button onclick="go('#/cycle/${c.id}')">${esc(c.name)}</button><span class="sep">/</span><span>${esc(test.id)}</span></div>
   <div class="dhead"><h2>${esc(test.id)} · ${esc(test.title)}</h2>${verdictPill(test.verdict)}</div>
   <div class="kv"><span class="chip ty">${esc(test.type)}</span>${test.layer?`<span class="chip ly">${esc(test.layer)}</span>`:""}<span class="chip">${esc(test.area)}</span> · traced through all 12 agents for this test alone</div>
   <div class="layout"><div class="nav">${nav}</div>
     <div class="panel">
       <div class="p-head"><span class="p-id">${esc(p.id)}</span><h3>${esc(p.a)}</h3>${head}</div>
-      <div class="io in"><div class="io-h">▸ INPUT — what it received ${fromLbl}</div>${tr.in}</div>
+      ${brief}
+      <details class="io in" open>
+        <summary><span class="tw-caret">▶</span>INPUT — what it received ${fromLbl}${peek(ji)}</summary>
+        <div class="io-body">${tr.in}${raw("input payload",ji)}</div>
+      </details>
       <div class="arrow">↓</div>
-      <div class="io out"><div class="io-h">▪ OUTPUT — what it produced ${toLbl}</div>${tr.out}</div>
+      <details class="io out" open>
+        <summary><span class="tw-caret">▶</span>OUTPUT — what it did here ${toLbl}${peek(jo)}</summary>
+        <div class="io-body">${tr.out}${raw("output payload",jo)}</div>
+      </details>
       <div class="stepnav">
         ${prev?`<button onclick="go('#/test/${test.id}/${prev.id}')"><span class="lbl">◀ previous agent</span>${esc(prev.a)}</button>`:`<button disabled><span class="lbl">◀ previous agent</span>start of chain</button>`}
         ${next?`<button style="text-align:right" onclick="go('#/test/${test.id}/${next.id}')"><span class="lbl">next agent ▶</span>${esc(next.a)}</button>`:`<button disabled style="text-align:right"><span class="lbl">next agent ▶</span>end of chain</button>`}
