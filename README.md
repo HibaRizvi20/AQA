@@ -58,18 +58,31 @@ difference between two runs is a difference in the app.
 
 ```bash
 cp .env.example .env          # APP_BASE_URL and API_BASE_URL are required
-npm test                      # 81 unit + integration tests, no dependencies
+npm test                      # 118 unit + integration tests, no dependencies
 
-# see it work against the bundled demo app
-npm run demo:app &            # a small app with three deliberate defects
+# see the whole thing work in one command
+npm run demo:full             # starts the demo app, walks every gate, exports the dashboard
+open dashboard/index.html     # the board, showing the run you just made
+
+# or drive it a gate at a time
+npm run demo:app &
 npm run demo                  # stops at CP1
 npm run aqa approve spec-demo-items CP1
 npm run demo                  # ... and so on through CP5
 ```
 
-The demo run ends with **6 passed · 3 failed** — the three defects planted in the demo app, found
+Installed as a package it is `aqa run <spec>`, `aqa approve <run> CP1`, `aqa report`.
+
+The demo run ends with **8 passed · 3 failed** — the three defects planted in the demo app, found
 by the pipeline itself. CI asserts exactly those three: a fully green demo run would mean the
 pipeline had stopped looking.
+
+### The dashboard shows your run, not an example
+
+`node pipeline/report.mjs` reads the artifacts a run actually wrote and generates
+`dashboard/data.js`. The board then shows real milestones, cycles, tests and per-agent traces.
+With no export it falls back to the bundled example **and says so in a banner** — illustrative
+numbers are never presented as a run.
 
 ### Commands
 
@@ -124,6 +137,60 @@ of prose *into* this shape — it is not needed to run the pipeline.
 `{run}` is substituted with a per-run value through both paths and bodies, so a suite can be
 re-run against a stateful app without manual cleanup. Three consecutive runs against the same
 demo app give byte-identical results.
+
+### UI behaviours
+
+A behaviour can carry `ui.steps` alongside (or instead of) a contract, and they are executed in a
+real browser:
+
+```jsonc
+"ui": { "steps": [
+  { "goto": "/items-page" },
+  { "fill": { "selector": "[data-testid=link]", "value": "https://example.com/{run}" } },
+  { "click": { "selector": "[data-testid=save]" } },
+  { "expectText": { "selector": "[data-testid=items]", "toContainText": "{run}" } }
+]}
+```
+
+Playwright is an **optional** peer. Without it, UI behaviours are reported as skipped with that
+reason — the core promise that the pipeline runs on Node alone still holds.
+
+A selector matching several elements is an **ambiguous selector finding**, not something the
+runner quietly resolves: a step that genuinely means "the first of several" says `"nth": 0`, and
+that intent is then visible in the artifact. Reaching the wrong ✕ is exactly the defect class this
+framework exists to surface.
+
+### All twelve agents run
+
+The four async tracks execute after the gated pipeline and never gate it:
+
+| Agent | Produces |
+|---|---|
+| 9 · Performance & Logs | p50/p95 per step against budgets **declared in the spec**, so a breach is a fact |
+| 10 · Design Parity | route-level comparison against a prototype, when one is connected |
+| 11 · AI Eval Analyst | deterministic checks over a golden dataset — no judge model in the runtime |
+| 12 · Drift Detector | re-verifies the Feature Registry against the live app |
+
+Without the configuration each needs, a track reports `not_configured` or `not_applicable`
+**with its reason**, and the nav dot is derived from the panel so the two can never disagree.
+
+### Robustness
+
+- **Retries are transport-only.** A connection reset is retried with exponential backoff and full
+  jitter; **an answered request never is.** A 500 is a result, and asking again until it changes is
+  precisely what this framework refuses to do. A retried probe records `attempts` so "passed on
+  attempt 3" is not indistinguishable from "passed".
+- **Bounded concurrency** (`CONCURRENCY`, default 4). Serial is unusably slow on a real suite;
+  unbounded turns the tool into a load test of the app it is measuring.
+- **Secrets are registered, not guessed.** Passwords from config and tokens from auth responses are
+  registered on read; every occurrence is stripped from logs, console output and artifacts. A test
+  asserts no artifact contains one, and CI greps the run directory as a second line of defence.
+- **Structured logs.** `AQA_LOG=json` for a log pipeline, `AQA_LOG_LEVEL=debug` for detail.
+- **Versioned artifacts.** Every artifact is an envelope (`schema`, `version`, `phase`, `runId`,
+  `producedAt`, `data`), so a consumer can refuse a shape it does not understand rather than
+  silently misread it.
+- **Repeatable against a stateful app.** `{run}` is unique per invocation and substituted through
+  paths and bodies; three consecutive runs give identical results.
 
 ### What it will not do
 

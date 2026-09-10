@@ -12,6 +12,9 @@
 //     the pipeline and lose the other twenty results.
 //   · Every request is bounded by a timeout, so a hung server cannot hang the run.
 
+import { withRetry } from "./retry.mjs";
+import { registerSecret } from "./log.mjs";
+
 const now = () => Number(process.hrtime.bigint() / 1000n) / 1000; // ms, monotonic
 
 /** fetch with a hard timeout, never throwing — the failure comes back as a value. */
@@ -112,6 +115,7 @@ export async function authenticate(cfg, auth, { timeoutMs } = {}) {
 
   const token = readPath(r.body, auth.tokenField);
   if (!token) return { token: null, reason: `no "${auth.tokenField}" in the auth response` };
+  registerSecret(token); // from here on it cannot appear in a log, a console line, or an artifact
   return { token, status: r.status, durationMs: r.durationMs };
 }
 
@@ -121,7 +125,7 @@ export async function authenticate(cfg, auth, { timeoutMs } = {}) {
  * Returns { verdict: "pass" | "fail" | "skipped", checks: [...], evidence }.
  * `checks` lists each assertion separately so a failure names exactly what differed.
  */
-export async function probeContract(contract, { apiBase, token, timeoutMs, substitute = {} } = {}) {
+export async function probeContract(contract, { apiBase, token, timeoutMs, substitute = {}, retry } = {}) {
   if (!contract) return { verdict: "skipped", reason: "no contract declared for this behaviour", checks: [] };
 
   const needsAuth = contract.auth !== false;
@@ -129,7 +133,7 @@ export async function probeContract(contract, { apiBase, token, timeoutMs, subst
     return { verdict: "skipped", reason: "this contract needs authentication and no token was obtained", checks: [] };
   }
 
-  // Splice in a previous step's captured value ("/v1/resources/{id}") and any run-scoped
+  // Splice in a previous step's captured value ("/v1/items/{id}") and any run-scoped
   // variable ("{run}"), through the path AND the body.
   const path = substituteDeep(String(contract.path), substitute);
   const body = contract.body === undefined ? undefined : substituteDeep(contract.body, substitute);
@@ -141,12 +145,18 @@ export async function probeContract(contract, { apiBase, token, timeoutMs, subst
   if (body !== undefined) headers["Content-Type"] ??= "application/json";
   if (needsAuth && token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await request(new URL(path, apiBase).toString(), {
-    method: contract.method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    timeoutMs,
-  });
+  // Retry wraps the TRANSPORT only. An answered request — any status — is the evidence, and
+  // asking again until it changes is exactly what this framework refuses to do.
+  const res = await withRetry(
+    () =>
+      request(new URL(path, apiBase).toString(), {
+        method: contract.method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+        timeoutMs,
+      }),
+    retry,
+  );
 
   if (!res.ok) {
     return {
@@ -154,6 +164,7 @@ export async function probeContract(contract, { apiBase, token, timeoutMs, subst
       reason: `request failed: ${res.error}`,
       checks: [{ check: "request completes", expected: "a response", actual: res.error, ok: false }],
       request: { method: contract.method, path },
+      ...(res.attempts > 1 ? { attempts: res.attempts, retried: true } : {}),
     };
   }
 
@@ -194,6 +205,7 @@ export async function probeContract(contract, { apiBase, token, timeoutMs, subst
     failed: failed.map((c) => `${c.check}: expected ${c.expected}, got ${c.actual}`),
     request: { method: contract.method, path },
     response: { status: res.status, durationMs: res.durationMs, body: res.body },
+    ...(res.retried ? { attempts: res.attempts, retried: true } : {}),
     capture: contract.capture ? { [contract.capture]: readPath(res.body, contract.capture) } : null,
   };
 }

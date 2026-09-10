@@ -12,7 +12,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { PHASES } from "./phases.mjs";
+import { PHASES, ASYNC_TRACKS } from "./phases.mjs";
+import { log } from "./lib/log.mjs";
 import { loadConfig, ConfigError } from "./lib/config.mjs";
 import { loadSpec, SpecError } from "./lib/spec.mjs";
 
@@ -40,10 +41,23 @@ function writeState(st) {
   fs.writeFileSync(statePath(st.runId), JSON.stringify(st, null, 2));
 }
 
-function writeArtifact(runId, phaseId, data) {
+// Every artifact is versioned. A consumer — the dashboard, a report, someone's script — can then
+// refuse a shape it does not understand instead of silently misreading it.
+export const ARTIFACT_VERSION = 1;
+
+function writeArtifact(runId, phaseId, data, meta = {}) {
   const dir = path.join(runDir(runId), "artifacts");
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, `${phaseId}.json`), JSON.stringify(data ?? {}, null, 2));
+  const envelope = {
+    schema: "aqa.artifact",
+    version: ARTIFACT_VERSION,
+    phase: phaseId,
+    runId,
+    producedAt: new Date().toISOString(),
+    ...meta,
+    data: data ?? {},
+  };
+  fs.writeFileSync(path.join(dir, `${phaseId}.json`), JSON.stringify(envelope, null, 2));
 }
 
 function readArtifacts(runId) {
@@ -51,7 +65,15 @@ function readArtifacts(runId) {
   if (!fs.existsSync(dir)) return {};
   const out = {};
   for (const f of fs.readdirSync(dir).filter((f) => f.endsWith(".json"))) {
-    out[f.replace(/\.json$/, "")] = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
+    const parsed = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8"));
+    if (parsed?.schema === "aqa.artifact" && parsed.version !== ARTIFACT_VERSION) {
+      throw new Error(
+        `artifact ${f} was written by schema version ${parsed.version}, this build reads ${ARTIFACT_VERSION}. ` +
+          `Start a new run rather than mixing shapes.`,
+      );
+    }
+    // Phases read the payload; the envelope is for consumers of the run.
+    out[f.replace(/\.json$/, "")] = parsed?.schema === "aqa.artifact" ? parsed.data : parsed;
   }
   return out;
 }
@@ -84,6 +106,16 @@ function summarise(id, a) {
     default:
       return "done";
   }
+}
+
+function summariseAsync(a) {
+  if (a.status === "not_configured" || a.status === "not_applicable") return `${a.status.replace("_", " ")} — ${a.reason}`;
+  if (a.status === "error") return `error — ${a.reason}`;
+  if (a.steps) return `${a.steps.length} step(s) measured · ${a.findings.length} breach(es)`;
+  if (a.checks) return `${a.checked} checked · ${a.verified} verified · ${a.drifted} drifted · ${a.not_checked} unchecked`;
+  if (a.diffs) return `${a.checked} route(s) compared · ${a.diffs.length} difference(s)`;
+  if (a.results) return `${a.cases} case(s) · ${a.deterministic_pass} deterministic pass`;
+  return "ran";
 }
 
 async function cmdRun(specPath, opts) {
@@ -141,12 +173,32 @@ async function cmdRun(specPath, opts) {
     }
 
     artifacts[phase.id] = artifact;
-    writeArtifact(runId, phase.id, artifact);
+    writeArtifact(runId, phase.id, artifact, { agent: phase.agent, ms: Date.now() - started });
     st.steps[phase.id] = { status: "done", at: new Date().toISOString(), ms: Date.now() - started };
     writeState(st);
     console.log(`  ${c.ok("✔")} ${phase.id.padEnd(16)} ${c.dim(phase.agent.padEnd(20))} ${summarise(phase.id, artifact)}`);
 
     if (phase.gate && st.gates[phase.gate]?.decision !== "approved") return haltAtGate(st, phase);
+  }
+
+  // The async tracks run after the gated pipeline and never gate it. One failing here changes
+  // nothing about the merge decision — that is the whole point of the split.
+  log.line("");
+  log.line(c.dim("  async tracks — report only, never blocking"));
+  for (const track of ASYNC_TRACKS) {
+    const started = Date.now();
+    let artifact;
+    try {
+      artifact = await track.run({ spec, cfg, artifacts, session });
+    } catch (e) {
+      artifact = { status: "error", gates: false, reason: String(e.message ?? e) };
+      log.warn(`  ! ${track.id} errored: ${e.message}`);
+    }
+    artifacts[track.id] = artifact;
+    writeArtifact(runId, track.id, artifact, { agent: track.agent, n: track.n, ms: Date.now() - started });
+    st.steps[track.id] = { status: "done", at: new Date().toISOString(), ms: Date.now() - started };
+    const mark = artifact.status === "ran" ? c.ok("✔") : c.dim("·");
+    log.line(`  ${mark} ${track.id.padEnd(16)} ${c.dim(String(track.agent).padEnd(20))} ${summariseAsync(artifact)}`);
   }
 
   st.awaiting = null;
@@ -174,7 +226,7 @@ function cmdStatus(runId) {
   const st = readState(runId);
   if (!st) return fail(`no run "${runId}" under ${RUNS_DIR}`);
   console.log(c.bold(`\n  run ${st.runId}`) + c.dim(` · spec ${st.specId} · started ${st.startedAt}`));
-  for (const p of PHASES) {
+  for (const p of [...PHASES, ...ASYNC_TRACKS]) {
     const s = st.steps[p.id];
     const mark = s?.status === "done" ? c.ok("✔") : s?.status === "error" ? c.err("✖") : c.dim("·");
     const gate = p.gate ? (st.gates[p.gate]?.decision === "approved" ? c.ok(` ✓${p.gate}`) : c.warn(` ⏸${p.gate}`)) : "";

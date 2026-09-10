@@ -1,5 +1,5 @@
 {
-  "name": "autonomous-qa-agents",
+  "name": "@hibarizvi/aqa",
   "version": "1.0.0",
   "description": "AQA \u2014 a 12-agent, human-gated QA framework. The pipeline runs on Node alone: no model in the execution path, so a run is reproducible.",
   "type": "module",
@@ -10,15 +10,50 @@
     "demo:app": "node examples/demo-app.mjs",
     "demo": "node pipeline/orchestrator.mjs run examples/demo-spec.json",
     "e2e": "playwright test",
-    "e2e:bdd": "bddgen && playwright test --config playwright.bdd.config.ts"
+    "e2e:bdd": "bddgen && playwright test --config playwright.bdd.config.ts",
+    "report": "node pipeline/report.mjs",
+    "demo:full": "node examples/run-demo.mjs"
   },
   "license": "MIT",
   "author": "Hiba Rizvi",
-  "devDependencies": {
-    "@playwright/test": "^1.48.0",
-    "playwright-bdd": "^8.5.0"
-  },
   "engines": {
     "node": ">=20"
+  },
+  "bin": {
+    "aqa": "bin/aqa.mjs"
+  },
+  "files": [
+    "bin/",
+    "pipeline/",
+    "agents/",
+    "skills/",
+    "commands/",
+    "dashboard/",
+    "examples/",
+    "conventions.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "qa",
+    "testing",
+    "agents",
+    "contract-testing",
+    "playwright",
+    "gherkin",
+    "bdd",
+    "test-automation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HibaRizvi20/AQA.git"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  },
+  "peerDependencies": {
+    "playwright": ">=1.40"
   }
 }

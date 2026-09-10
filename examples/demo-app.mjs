@@ -18,7 +18,38 @@ const server = http.createServer((req, res) => {
 
   if (url.pathname === "/health") return send(200, { ok: true });
   if (url.pathname === "/login" && req.method === "POST") return send(200, { accessToken: "demo-token" });
-  if (url.pathname === "/" || url.pathname === "/items-page") return send(200, { page: "ok" });
+  // A real page, so UI behaviours have something to drive. Deliberately carries the same
+  // ambiguity a real app grows: two buttons rendering the same glyph, only `title` apart.
+  if (url.pathname === "/" || url.pathname === "/items-page") {
+    const rows = [...items].map(([id, u]) =>
+      `<li data-testid="item" data-id="${id}"><span>${u}</span>` +
+      `<button title="Delete" data-testid="item-delete" data-id="${id}">✕</button></li>`).join("");
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    return res.end(`<!doctype html><meta charset="utf-8"><title>Demo</title>
+<h1>Saved items</h1>
+<p data-testid="count">${items.size} item${items.size === 1 ? "" : "s"}</p>
+<button title="Dismiss" data-testid="banner-dismiss">✕</button>
+<input data-testid="link" placeholder="Paste a link">
+<button data-testid="save">Save</button>
+<ul data-testid="items">${rows}</ul>
+<script>
+const $ = (s) => document.querySelector(s);
+$('[data-testid=save]').onclick = async () => {
+  await fetch('/v1/items', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer demo-token' },
+    body: JSON.stringify({ url: $('[data-testid=link]').value }) });
+  location.reload();
+};
+document.querySelectorAll('[data-testid=item-delete]').forEach((b) => {
+  b.onclick = async () => {
+    if (!confirm('Delete this item?')) return;
+    await fetch('/v1/items/' + b.dataset.id, { method: 'DELETE', headers: { Authorization: 'Bearer demo-token' } });
+    location.reload();
+  };
+});
+$('[data-testid=banner-dismiss]').onclick = () => $('[data-testid=banner-dismiss]').remove();
+</script>`);
+  }
 
   if (url.pathname === "/v1/items" && req.method === "POST") {
     if (!authed) return send(401, { error: { code: "UNAUTHORIZED" } });

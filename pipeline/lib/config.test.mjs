@@ -6,7 +6,7 @@ import path from "node:path";
 import { loadConfig, parseEnvFile, ConfigError } from "./config.mjs";
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "aqa-cfg-"));
-const ok = { APP_BASE_URL: "http://localhost:5200", API_BASE_URL: "http://localhost:8080" };
+const ok = { APP_BASE_URL: "http://localhost:3000", API_BASE_URL: "http://localhost:3001" };
 
 describe("parseEnvFile", () => {
   test("reads pairs, ignores comments and blanks", () => {

@@ -6,6 +6,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { registerSecret } from "./log.mjs";
 
 /** Parse a .env file. No dependency, no shell semantics — KEY=value, # comments, blank lines. */
 export function parseEnvFile(text) {
@@ -38,14 +39,19 @@ const isUrl = (v) => {
 // anything optional states what happens when it is absent, so a partial config degrades
 // predictably instead of silently.
 export const SCHEMA = {
-  APP_BASE_URL: { required: true, validate: isUrl, hint: "the running web app, e.g. http://localhost:5200" },
-  API_BASE_URL: { required: true, validate: isUrl, hint: "the running API, e.g. http://localhost:8080" },
+  APP_BASE_URL: { required: true, validate: isUrl, hint: "the running web app, e.g. http://localhost:3000" },
+  API_BASE_URL: { required: true, validate: isUrl, hint: "the running API, e.g. http://localhost:3001" },
   TEST_USERNAME: { required: false, whenMissing: "contract probes that need auth are reported as skipped, never as passing" },
   TEST_PASSWORD: { required: false, whenMissing: "contract probes that need auth are reported as skipped, never as passing" },
   TRACKER_BASE_URL: { required: false, validate: isUrl, whenMissing: "the Tracker Publisher stays in dry-run and emits payloads only" },
   TRACKER_TOKEN: { required: false, whenMissing: "the Tracker Publisher stays in dry-run and emits payloads only" },
+  PROTOTYPE_BASE_URL: { required: false, validate: isUrl, whenMissing: "the Design Parity track reports not-configured instead of comparing" },
   REQUEST_TIMEOUT_MS: { required: false, validate: (v) => Number.isFinite(+v) && +v > 0, coerce: Number, default: 10000 },
   PERF_ITERATIONS: { required: false, validate: (v) => Number.isInteger(+v) && +v > 0, coerce: Number, default: 20 },
+  // Bounded, so a suite is neither serial-slow nor a load test of the app it measures.
+  CONCURRENCY: { required: false, validate: (v) => Number.isInteger(+v) && +v > 0 && +v <= 64, coerce: Number, default: 4 },
+  // Transport retries only — an answered request is never retried. See lib/retry.mjs.
+  RETRY_ATTEMPTS: { required: false, validate: (v) => Number.isInteger(+v) && +v >= 1 && +v <= 10, coerce: Number, default: 3 },
 };
 
 export class ConfigError extends Error {
@@ -101,6 +107,11 @@ export function loadConfig({ env = process.env, envFile = ".env", cwd = process.
   }
 
   if (problems.length) throw new ConfigError(problems);
+
+  // Register credentials before anything can log them. A QA tool holds the app's credentials by
+  // design, and CI output is the classic way they escape.
+  if (cfg.TEST_PASSWORD) registerSecret(cfg.TEST_PASSWORD);
+  if (cfg.TRACKER_TOKEN) registerSecret(cfg.TRACKER_TOKEN);
 
   return Object.freeze({
     ...cfg,

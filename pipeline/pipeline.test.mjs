@@ -56,7 +56,8 @@ after(() => {
   if (runsDir) fs.rmSync(runsDir, { recursive: true, force: true });
 });
 
-const artifact = (name) => JSON.parse(fs.readFileSync(path.join(runsDir, RUN_ID, "artifacts", `${name}.json`), "utf8"));
+const envelope = (name) => JSON.parse(fs.readFileSync(path.join(runsDir, RUN_ID, "artifacts", `${name}.json`), "utf8"));
+const artifact = (name) => envelope(name).data;
 const artifactExists = (name) => fs.existsSync(path.join(runsDir, RUN_ID, "artifacts", `${name}.json`));
 
 describe("the pipeline actually executes", () => {
@@ -85,7 +86,7 @@ describe("the pipeline actually executes", () => {
 
   test("scope computed a confidence rather than asserting one", () => {
     const a = artifact("01-scope");
-    assert.equal(a.in_scope.length, 9);
+    assert.equal(a.in_scope.length, 11);
     assert.ok(a.confidence > 0 && a.confidence <= 1);
     assert.match(a.rationale, /verifiable/);
   });
@@ -99,7 +100,7 @@ describe("the pipeline actually executes", () => {
     await aqa("approve", RUN_ID, "CP1");
     await aqa("run", SPEC);
     const a = artifact("03-case-design");
-    assert.equal(a.scenarios, 9);
+    assert.equal(a.scenarios, 11);
     assert.deepEqual(a.untagged, [], "an untagged scenario cannot be picked by tag");
     assert.match(a.gherkin, /@area:items/);
   });
@@ -110,18 +111,18 @@ describe("the pipeline actually executes", () => {
     const a = artifact("3b-publish");
     assert.equal(a.sent, 0);
     assert.equal(a.dry_run, true);
-    assert.equal(a.writes_pending.length, 9);
+    assert.equal(a.writes_pending.length, 11);
   });
 
   test("the targeted run finds the three defects planted in the demo app", async () => {
     await aqa("approve", RUN_ID, "CP3");
     await aqa("run", SPEC);
     const a = artifact("05-targeted-run");
-    assert.equal(a.ran, 9);
+    assert.equal(a.ran, 11);
     assert.equal(a.skipped, 0, "a skipped contract is a probe that never ran");
     const failed = a.results.filter((r) => r.verdict === "fail").map((r) => r.id).sort();
     assert.deepEqual(failed, ["DEMO-112", "DEMO-122", "DEMO-131"]);
-    assert.equal(a.passed, 6);
+    assert.equal(a.passed, 8, "6 API + 2 UI");
   });
 
   test("each failure names exactly what differed", () => {
@@ -152,6 +153,49 @@ describe("the pipeline actually executes", () => {
     const kb = artifact("09-finalise");
     assert.equal(kb.entry.verified_against_live, null, "the run had failures, so the registry must not claim it is verified");
     assert.match(kb.note, /not stamped/);
+  });
+
+  test("every artifact is a versioned envelope a consumer can trust", () => {
+    const e = envelope("05-targeted-run");
+    assert.equal(e.schema, "aqa.artifact");
+    assert.equal(e.version, 1);
+    assert.equal(e.phase, "05-targeted-run");
+    assert.equal(e.runId, RUN_ID);
+    assert.ok(e.producedAt, "a consumer needs to know how old a run is");
+    assert.ok(e.data, "the payload lives under .data so the envelope can grow without breaking readers");
+  });
+
+  test("all four async tracks run, and report rather than gate", () => {
+    const perf = artifact("a09-performance");
+    assert.equal(perf.gates, false);
+    assert.equal(perf.status, "ran");
+    assert.ok(perf.steps.length >= 1, "budgets declared in the spec were measured");
+
+    const drift = artifact("a12-drift");
+    assert.equal(drift.status, "ran");
+    assert.ok(drift.checked > 0);
+
+    // Neither of these is configured for the demo, and both must say so rather than pass.
+    for (const id of ["a10-design-parity", "a11-ai-eval"]) {
+      const a = artifact(id);
+      assert.match(a.status, /not_configured|not_applicable/, id);
+      assert.ok(a.reason, `${id} must say why it did not run`);
+      assert.equal(a.gates, false);
+    }
+  });
+
+  test("UI behaviours are executed in a real browser, or skipped with the reason", () => {
+    const a = artifact("05-targeted-run");
+    const ui = a.results.filter((r) => r.layer === "UI");
+    assert.equal(ui.length, 2);
+    for (const r of ui) {
+      if (r.verdict === "skipped") {
+        assert.match(r.reason, /playwright/i, "a skipped UI case must name why");
+      } else {
+        assert.equal(r.verdict, "pass", JSON.stringify(r.failed));
+        assert.ok(r.steps.length >= 3, "the browser really walked the steps");
+      }
+    }
   });
 
   test("a completed run with failures exits non-zero so CI can act on it", async () => {
@@ -194,10 +238,10 @@ describe("failure modes are reported, not thrown", () => {
       cwd: repo,
       env: { ...env, AQA_RUNS_DIR: dir, APP_BASE_URL: "http://127.0.0.1:1", API_BASE_URL: "http://127.0.0.1:1" },
     }).catch((e) => e);
-    const pre = JSON.parse(fs.readFileSync(path.join(dir, RUN_ID, "artifacts", "00-preflight.json"), "utf8"));
+    const pre = JSON.parse(fs.readFileSync(path.join(dir, RUN_ID, "artifacts", "00-preflight.json"), "utf8")).data;
     assert.ok(pre.routes.every((x) => x.status === "unreachable"));
     assert.ok(pre.findings.some((f) => f.severity === "blocking"));
-    const scope = JSON.parse(fs.readFileSync(path.join(dir, RUN_ID, "artifacts", "01-scope.json"), "utf8"));
+    const scope = JSON.parse(fs.readFileSync(path.join(dir, RUN_ID, "artifacts", "01-scope.json"), "utf8")).data;
     assert.ok(scope.confidence < 1, "confidence must fall when the app cannot be reached");
     fs.rmSync(dir, { recursive: true, force: true });
   });

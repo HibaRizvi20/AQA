@@ -33,6 +33,14 @@ jobs:
         with:
           node-version: "22.x"
 
+      # Playwright is OPTIONAL for the pipeline. Installing it here is what lets this job prove
+      # the UI track really drives a browser; without it those behaviours skip with a reason,
+      # which the unit suite covers separately.
+      - name: Install a browser for the UI track
+        run: |
+          npm i -D playwright --no-save
+          npx playwright install --with-deps chromium
+
       - name: Start the demo app
         run: |
           node examples/demo-app.mjs &
@@ -58,13 +66,48 @@ jobs:
             const a = require('./pipeline/runs/spec-demo-items/artifacts/05-targeted-run.json');
             const failed = a.results.filter(r => r.verdict === 'fail').map(r => r.id).sort();
             const expected = ['DEMO-112','DEMO-122','DEMO-131'];
-            console.log(a.passed + ' passed · ' + a.failed + ' failed · ' + a.skipped + ' skipped');
+            console.log(a.passed + ' passed · ' + a.failed + ' failed · ' + a.skipped + ' skipped · ' + a.ui_ran + ' UI');
             if (a.skipped) { console.error('a skipped contract never ran'); process.exit(1); }
+            if (a.ui_ran !== 2) { console.error('the UI track did not execute: ' + a.ui_ran); process.exit(1); }
             if (JSON.stringify(failed) !== JSON.stringify(expected)) {
               console.error('expected ' + expected + ', got ' + failed);
               process.exit(1);
             }
             console.log('the pipeline found exactly the planted defects');
+          "
+
+      - name: All twelve agents produced a result
+        run: |
+          node -e "
+            const fs = require('fs');
+            const dir = 'pipeline/runs/spec-demo-items/artifacts';
+            const want = ['00-preflight','01-scope','02-architecture','03-case-design','3b-publish',
+                          '04-generate','05-targeted-run','06-self-heal','07-regression','08-review',
+                          '09-finalise','a09-performance','a10-design-parity','a11-ai-eval','a12-drift'];
+            const missing = want.filter(p => !fs.existsSync(dir + '/' + p + '.json'));
+            if (missing.length) { console.error('no artifact from: ' + missing.join(', ')); process.exit(1); }
+            for (const p of want) {
+              const e = JSON.parse(fs.readFileSync(dir + '/' + p + '.json', 'utf8'));
+              if (e.schema !== 'aqa.artifact' || e.version !== 1) { console.error(p + ' is not a versioned artifact'); process.exit(1); }
+            }
+            console.log('all 15 phases wrote a versioned artifact');
+          "
+
+      - name: No credential reached an artifact
+        run: |
+          if grep -rEl 'demo-token|demo-pass' pipeline/runs/ 2>/dev/null; then
+            echo 'a credential leaked into a run artifact'; exit 1
+          fi
+          echo 'no credential in any artifact'
+
+      - name: Export the dashboard from the real run
+        run: |
+          node pipeline/report.mjs
+          node -e "
+            const s = require('fs').readFileSync('dashboard/data.js','utf8');
+            const d = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}')+1));
+            if (!d.tests.length) { console.error('the export is empty'); process.exit(1); }
+            console.log(d.cycles.length + ' cycle(s), ' + d.tests.length + ' test(s) exported');
           "
 
       - name: Upload run artifacts

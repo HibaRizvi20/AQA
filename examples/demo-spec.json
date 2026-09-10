@@ -245,6 +245,79 @@
           "status": 404
         }
       }
+    },
+    {
+      "id": "DEMO-201",
+      "title": "Save an item through the page",
+      "feature": "add item",
+      "layer": "UI",
+      "when": [
+        "I paste a link into the save box",
+        "I choose Save"
+      ],
+      "then": "the page shows one more item",
+      "ui": {
+        "steps": [
+          {
+            "goto": "/items-page"
+          },
+          {
+            "fill": {
+              "selector": "[data-testid=link]",
+              "value": "https://example.com/ui/{run}"
+            }
+          },
+          {
+            "click": {
+              "selector": "[data-testid=save]"
+            }
+          },
+          {
+            "expectText": {
+              "selector": "[data-testid=items]",
+              "toContainText": "{run}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "DEMO-202",
+      "title": "Cancelling the delete confirmation keeps the item",
+      "feature": "delete item",
+      "layer": "UI",
+      "when": [
+        "I choose delete on an item",
+        "I dismiss the confirmation"
+      ],
+      "then": "the item is still listed",
+      "ui": {
+        "steps": [
+          {
+            "goto": "/items-page"
+          },
+          {
+            "dismissDialog": true
+          },
+          {
+            "click": {
+              "selector": "[data-testid=item-delete]",
+              "nth": 0
+            }
+          },
+          {
+            "expectVisible": {
+              "selector": "[data-testid=item]",
+              "nth": 0
+            }
+          }
+        ]
+      }
     }
-  ]
+  ],
+  "budgets": {
+    "DEMO-101": 250,
+    "DEMO-111": 200,
+    "DEMO-132": 200
+  }
 }

@@ -151,6 +151,7 @@ details.raw pre{margin:0;border:none;border-top:1px solid var(--border);border-r
 .foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--border);font-size:11.5px;color:var(--faint)}
 </style></head><body>
 <div class="wrap" id="app"></div>
+<script src="data.js" onerror="window.__AQA_NO_DATA=1"></script>
 <script>
 /* ═════════════════════════════════════════════════════════════════════════
    AQA · Runs Explorer
@@ -483,14 +484,14 @@ probe   : ${(t.probe||[]).map(x=>x.what+" = "+(x.found?"found":x.found===false?"
    pipeline stops honestly at CP2.
    Replace this block with your own cycle data.
    ──────────────────────────────────────────────────────────────────────── */
-const MILESTONES=[
+let MILESTONES=[
  {id:"MS-24", name:"Release 2.4", owner:"qa-lead", window:"25 Aug → 05 Sep 2026", status:"complete",
   note:"The regression pass that shipped 2.4. Every gated agent ran to a knowledge-base entry, with the performance and drift tracks running alongside."},
  {id:"MS-25", name:"Release 2.5", owner:"qa-lead", window:"01 Sep → 19 Sep 2026", status:"in progress",
   note:"In flight. The first cycle stopped at CP2 because the feature it was asked to test has not been built yet."},
 ];
 
-const CYCLES=[
+let CYCLES=[
  {id:"CY-24-R1", milestone:"MS-24", name:"Release regression", kind:"regression",
   target:"Acme Shop · staging", source:"tracker · AQA-EP-*",
   started:"2026-09-01 10:12", ended:"2026-09-01 16:40", status:"complete", awaiting:null,
@@ -565,7 +566,7 @@ const C=o=>Object.assign({
   probeNote:"The control does not exist in this build. Later phases will skip rather than invent a selector, and the cycle holds at CP2 for a human.",
 }, o);
 
-const TESTS=[
+let TESTS=[
 /* ── checkout ─────────────────────────────────────────────────────────── */
 R({id:"AQA-101", title:"Complete a card checkout", type:"positive", area:"checkout", verdict:"pass", duration:"4.2s",
   spec:{source:"tracker", ref:"AQA-EP-CHECKOUT / AQA-101", text:"A signed-in shopper with one item can pay by card and receive a confirmation number."},
@@ -774,6 +775,19 @@ C({id:"AQA-207", title:"Remove a saved item", type:"guard",
 ];
 
 
+/* ── real data, when a run has been exported ──────────────────────────────
+   `node pipeline/report.mjs` writes dashboard/data.js from artifacts the pipeline
+   actually produced. Without it the board shows the bundled example and says so,
+   rather than passing illustrative numbers off as a run. */
+const LIVE = (typeof window !== "undefined" && window.AQA_DATA) ? window.AQA_DATA : null;
+let LIVE_FINDINGS = {};
+if (LIVE) {
+  MILESTONES = LIVE.milestones;
+  CYCLES = LIVE.cycles;
+  TESTS = LIVE.tests;
+  LIVE_FINDINGS = LIVE.findings ?? {};
+}
+
 /* ── helpers ────────────────────────────────────────────────────────────── */
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 const cyclesOf=m=>CYCLES.filter(c=>c.milestone===m.id);
@@ -839,7 +853,10 @@ function renderExplorer(q){
     </div><div class="cycles">${tiles}</div></section>`;
   }).join("");
 
-  return `<p class="eyebrow">AQA · Autonomous QA</p><h1>Runs Explorer</h1>
+  const source = LIVE
+    ? `<div class="banner" style="margin:10px 0 0">Showing <b>${LIVE.cycles.length} real run(s)</b> exported ${esc(String(LIVE.generatedAt).replace("T", " ").slice(0, 16))} from <span class="mono">pipeline/runs</span>.</div>`
+    : `<div class="banner warn" style="margin:10px 0 0">Showing the <b>bundled example</b>. Run the pipeline, then <span class="mono">node pipeline/report.mjs</span> to replace this with your own runs.</div>`;
+  return `<p class="eyebrow">AQA · Autonomous QA</p><h1>Runs Explorer</h1>${source}
   <p class="subt">Every milestone, the cycles inside it, and how far each one got. Open a cycle to see the individual tests it ran, then open a test to watch all 12 agents pass it hand to hand, input to output.</p>
   <div class="tiles">
     <div class="tile"><div class="n">${MILESTONES.length}</div><div class="l">Milestones</div><div class="s">${CYCLES.length} cycles inside them</div></div>

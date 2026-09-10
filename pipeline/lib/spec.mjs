@@ -7,6 +7,8 @@
 // An LLM is useful for turning a paragraph of prose INTO this shape. It is not required to run
 // the pipeline, and nothing downstream calls one.
 
+import { validateUiSteps } from "./ui.mjs";
+
 const ID = /^[A-Za-z][A-Za-z0-9_-]*(?::[A-Za-z0-9_.-]+)*$/;
 const METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
 
@@ -57,6 +59,19 @@ export function parseSpec(input) {
   if (!isStr(s.area)) problems.push('area is required — the product feature, e.g. "library"');
   if (!isArr(s.behaviours)) problems.push("behaviours must be a non-empty array");
 
+  if (s.budgets !== undefined) {
+    if (typeof s.budgets !== "object" || s.budgets === null) problems.push("budgets must be an object of behaviour-id → p95 milliseconds");
+    else {
+      for (const [k, v] of Object.entries(s.budgets)) {
+        if (!Number.isFinite(v) || v <= 0) problems.push(`budgets["${k}"] must be a positive number of milliseconds`);
+      }
+    }
+  }
+  if (s.golden !== undefined) {
+    if (!isStr(s.golden?.endpoint)) problems.push("golden.endpoint is required when golden is present");
+    if (!isArr(s.golden?.cases)) problems.push("golden.cases must be a non-empty array");
+  }
+
   if (s.auth !== undefined) {
     const a = s.auth;
     if (!isStr(a?.path)) problems.push("auth.path is required when auth is present");
@@ -80,6 +95,12 @@ export function parseSpec(input) {
       problems.push(`${where} has no contract and no steps — nothing could verify it`);
     }
     validateContract(b?.contract, where, problems);
+    validateUiSteps(b?.ui?.steps, where, problems);
+  }
+
+  // A budget for a behaviour that does not exist is a typo that would silently measure nothing.
+  for (const k of Object.keys(s.budgets ?? {})) {
+    if (!seen.has(k)) problems.push(`budgets["${k}"] does not match any behaviour id`);
   }
 
   if (problems.length) throw new SpecError(problems);
@@ -90,6 +111,9 @@ export function parseSpec(input) {
     title: s.title ?? s.area,
     routes: Object.freeze([...(s.routes ?? [])]),
     auth: s.auth ? Object.freeze({ method: s.auth.method ?? "POST", ...s.auth }) : null,
+    budgets: Object.freeze({ ...(s.budgets ?? {}) }),
+    prototype: s.prototype ?? null,
+    golden: s.golden ? Object.freeze({ ...s.golden }) : null,
     behaviours: Object.freeze(
       s.behaviours.map((b) =>
         Object.freeze({
@@ -102,9 +126,11 @@ export function parseSpec(input) {
           contract: b.contract
             ? Object.freeze({ ...b.contract, method: b.contract.method.toUpperCase() })
             : null,
+          ui: b.ui ? Object.freeze({ ...b.ui, steps: Object.freeze([...b.ui.steps]) }) : null,
           // A behaviour may pin its own type; otherwise the tag engine derives it.
           type: b.type ?? null,
           layer: b.layer ?? (b.contract ? "API" : "UI"),
+          // A behaviour may carry both: a contract for the API truth and ui.steps for the journey.
         }),
       ),
     ),
