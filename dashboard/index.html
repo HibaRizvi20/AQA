@@ -1118,7 +1118,10 @@ function renderTest(testId,phaseId){
     const k=Object.keys(o);
     return `<span class="peek">${k.length} field${k.length!==1?"s":""} · ${esc(k.slice(0,3).join(", "))}${k.length>3?"…":""}</span>`;
   };
-  const ji=inJson(test,cur), jo=outJson(test,cur);
+  // With a real run, the payloads are the artifacts themselves; the generators below only
+  // know the bundled example's shape.
+  const ji = LIVE ? (tr.inJson ?? null) : inJson(test, cur);
+  const jo = LIVE ? (tr.outJson ?? null) : outJson(test, cur);
 
   return `<div class="crumb"><button onclick="go('#/')">Runs Explorer</button><span class="sep">/</span><button onclick="go('#/milestone/${m.id}')">${esc(m.name)}</button><span class="sep">/</span><button onclick="go('#/cycle/${c.id}')">${esc(c.name)}</button><span class="sep">/</span><span>${esc(test.id)}</span></div>
   <div class="dhead"><h2>${esc(test.id)} · ${esc(test.title)}</h2>${verdictPill(test.verdict)}</div>
@@ -1149,10 +1152,21 @@ function go(h){location.hash=h;}
 function onSearch(v){const pos=(document.getElementById("q")||{}).selectionStart;paint(renderExplorer(v));const q=document.getElementById("q");if(q){q.focus();if(pos!=null)q.setSelectionRange(pos,pos);}}
 function route(){
   const h=location.hash||"#/";let m;
-  if((m=h.match(/^#\/test\/([^/]+)(?:\/(.+))?$/)))  paint(renderTest(decodeURIComponent(m[1]),m[2]?decodeURIComponent(m[2]):null));
-  else if((m=h.match(/^#\/cycle\/(.+)$/)))          {FILTER={type:"all",area:"all"};paint(renderCycle(decodeURIComponent(m[1])));}
-  else if((m=h.match(/^#\/milestone\/(.+)$/)))      paint(renderMilestone(decodeURIComponent(m[1])));
-  else                                              paint(renderExplorer(""));
+  try {
+    if((m=h.match(/^#\/test\/([^/]+)(?:\/(.+))?$/)))  paint(renderTest(decodeURIComponent(m[1]),m[2]?decodeURIComponent(m[2]):null));
+    else if((m=h.match(/^#\/cycle\/(.+)$/)))          {FILTER={type:"all",area:"all"};paint(renderCycle(decodeURIComponent(m[1])));}
+    else if((m=h.match(/^#\/milestone\/(.+)$/)))      paint(renderMilestone(decodeURIComponent(m[1])));
+    else                                              paint(renderExplorer(""));
+  } catch (e) {
+    // A view that throws used to leave the previous screen on the page, so a click looked like
+    // it did nothing. Say what broke instead, and keep the board navigable.
+    paint(`<button class="back" onclick="go('#/')">← Runs Explorer</button>
+      <div class="banner bad"><b>This view failed to render</b>
+        <span class="mono">${esc(String(e && e.message || e))}</span>
+        <div class="sub2">Route <span class="mono">${esc(h)}</span>. The rest of the board still works.</div>
+      </div>`);
+    if (window.console) console.error("AQA dashboard render failed on", h, e);
+  }
   window.scrollTo(0,0);
 }
 window.addEventListener("hashchange",route);route();
