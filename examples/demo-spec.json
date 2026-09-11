@@ -1,0 +1,323 @@
+{
+  "id": "spec:demo-items",
+  "area": "items",
+  "title": "Save and delete items",
+  "routes": [
+    "/",
+    "/items-page"
+  ],
+  "auth": {
+    "method": "POST",
+    "path": "/login",
+    "tokenField": "accessToken"
+  },
+  "behaviours": [
+    {
+      "id": "DEMO-101",
+      "title": "Save an item by pasting a link",
+      "feature": "add item",
+      "given": "my list is empty",
+      "when": [
+        "I paste a link into the save box",
+        "I choose Save"
+      ],
+      "then": "the item is saved and returned with an id",
+      "contract": {
+        "method": "POST",
+        "path": "/v1/items",
+        "body": {
+          "url": "https://example.com/aqa/{run}-one"
+        },
+        "expect": {
+          "status": 201,
+          "hasFields": [
+            "id",
+            "url",
+            "provider"
+          ]
+        }
+      }
+    },
+    {
+      "id": "DEMO-102",
+      "title": "Delete an item from the list",
+      "feature": "delete item",
+      "given": "my list has one item",
+      "when": [
+        "I choose delete on that item",
+        "I confirm the dialog"
+      ],
+      "then": "the item is removed from my list",
+      "contract": {
+        "method": "DELETE",
+        "path": "/v1/items/{id}",
+        "expect": {
+          "status": 204
+        },
+        "setup": [
+          {
+            "method": "POST",
+            "path": "/v1/items",
+            "body": {
+              "url": "https://example.com/aqa/{run}-two"
+            },
+            "expect": {
+              "status": 201
+            },
+            "capture": "id"
+          }
+        ]
+      }
+    },
+    {
+      "id": "DEMO-111",
+      "title": "An empty URL is rejected",
+      "feature": "add item",
+      "when": [
+        "I submit an empty link"
+      ],
+      "then": "the request is rejected with a clear message",
+      "contract": {
+        "method": "POST",
+        "path": "/v1/items",
+        "body": {
+          "url": ""
+        },
+        "expect": {
+          "status": 400,
+          "bodyMatches": {
+            "error.code": "INVALID_URL"
+          }
+        }
+      }
+    },
+    {
+      "id": "DEMO-112",
+      "title": "A non-web scheme is rejected",
+      "feature": "add item",
+      "when": [
+        "I submit an ftp link"
+      ],
+      "then": "the request is rejected rather than rewritten",
+      "contract": {
+        "method": "POST",
+        "path": "/v1/items",
+        "body": {
+          "url": "ftp://example.com/f"
+        },
+        "expect": {
+          "status": 400,
+          "bodyMatches": {
+            "error.code": "INVALID_URL"
+          }
+        }
+      }
+    },
+    {
+      "id": "DEMO-113",
+      "title": "Unauthenticated save is refused",
+      "feature": "auth",
+      "when": [
+        "I submit a link with no credentials"
+      ],
+      "then": "the request is refused",
+      "contract": {
+        "method": "POST",
+        "path": "/v1/items",
+        "auth": false,
+        "body": {
+          "url": "https://example.com/aqa/{run}-noauth"
+        },
+        "expect": {
+          "status": 401
+        }
+      }
+    },
+    {
+      "id": "DEMO-121",
+      "title": "Saving the same link twice is refused",
+      "feature": "add item",
+      "when": [
+        "I save a link",
+        "I save the same link again"
+      ],
+      "then": "the second attempt is refused as already saved",
+      "contract": {
+        "method": "POST",
+        "path": "/v1/items",
+        "body": {
+          "url": "https://example.com/aqa/{run}-dup"
+        },
+        "expect": {
+          "status": 409,
+          "bodyMatches": {
+            "error.code": "ALREADY_SAVED"
+          }
+        },
+        "setup": [
+          {
+            "method": "POST",
+            "path": "/v1/items",
+            "body": {
+              "url": "https://example.com/aqa/{run}-dup"
+            },
+            "expect": {
+              "status": 201
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "DEMO-122",
+      "title": "Re-adding a previously deleted link saves it again",
+      "feature": "add item",
+      "given": "I saved a link and then deleted it",
+      "when": [
+        "I save the same link again"
+      ],
+      "then": "it is saved again as a fresh entry",
+      "contract": {
+        "method": "POST",
+        "path": "/v1/items",
+        "body": {
+          "url": "https://example.com/aqa/{run}-readd"
+        },
+        "expect": {
+          "status": 201,
+          "hasFields": [
+            "id"
+          ]
+        },
+        "setup": [
+          {
+            "method": "POST",
+            "path": "/v1/items",
+            "body": {
+              "url": "https://example.com/aqa/{run}-readd"
+            },
+            "expect": {
+              "status": 201
+            },
+            "capture": "id"
+          },
+          {
+            "method": "DELETE",
+            "path": "/v1/items/{id}",
+            "expect": {
+              "status": 204
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "DEMO-131",
+      "title": "Deleting with a malformed id is a client error",
+      "feature": "delete item",
+      "when": [
+        "I delete using an id that is not well formed"
+      ],
+      "then": "the request is refused as a client error, not a server error",
+      "contract": {
+        "method": "DELETE",
+        "path": "/v1/items/not-an-id",
+        "expect": {
+          "status": [
+            400,
+            404
+          ]
+        }
+      }
+    },
+    {
+      "id": "DEMO-132",
+      "title": "Deleting an unknown id returns not found",
+      "feature": "delete item",
+      "when": [
+        "I delete an id that does not exist"
+      ],
+      "then": "the request returns not found",
+      "contract": {
+        "method": "DELETE",
+        "path": "/v1/items/itm-999999",
+        "expect": {
+          "status": 404
+        }
+      }
+    },
+    {
+      "id": "DEMO-201",
+      "title": "Save an item through the page",
+      "feature": "add item",
+      "layer": "UI",
+      "when": [
+        "I paste a link into the save box",
+        "I choose Save"
+      ],
+      "then": "the page shows one more item",
+      "ui": {
+        "steps": [
+          {
+            "goto": "/items-page"
+          },
+          {
+            "fill": {
+              "selector": "[data-testid=link]",
+              "value": "https://example.com/ui/{run}"
+            }
+          },
+          {
+            "click": {
+              "selector": "[data-testid=save]"
+            }
+          },
+          {
+            "expectText": {
+              "selector": "[data-testid=items]",
+              "toContainText": "{run}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "DEMO-202",
+      "title": "Cancelling the delete confirmation keeps the item",
+      "feature": "delete item",
+      "layer": "UI",
+      "when": [
+        "I choose delete on an item",
+        "I dismiss the confirmation"
+      ],
+      "then": "the item is still listed",
+      "ui": {
+        "steps": [
+          {
+            "goto": "/items-page"
+          },
+          {
+            "dismissDialog": true
+          },
+          {
+            "click": {
+              "selector": "[data-testid=item-delete]",
+              "nth": 0
+            }
+          },
+          {
+            "expectVisible": {
+              "selector": "[data-testid=item]",
+              "nth": 0
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "budgets": {
+    "DEMO-101": 250,
+    "DEMO-111": 200,
+    "DEMO-132": 200
+  }
+}

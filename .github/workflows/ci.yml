@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: test · node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20.x", "22.x", "24.x"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # The control layer, the toolbelt and the agent wiring are all testable without a model.
+      # These run on every push, with no key and no network to Anthropic.
+      - name: Unit and integration tests
+        run: node --test "pipeline/**/*.test.mjs"
+
+  demo:
+    name: pipeline runs end to end
+    runs-on: ubuntu-latest
+    # The pipeline drives real agents, so this job needs a key. On a fork, or
+    # before the secret is set, it is skipped rather than failing misleadingly.
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+
+      # Playwright is OPTIONAL for the pipeline. Installing it here is what lets this job prove
+      # the UI track really drives a browser; without it those behaviours skip with a reason,
+      # which the unit suite covers separately.
+      - name: Skip if no key is configured
+        id: gate
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::ANTHROPIC_API_KEY is not set, so the agentic run is skipped. The unit suite still covers the control layer."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install the agent SDK and a browser
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          npm install --no-save @anthropic-ai/sdk playwright
+          npx playwright install --with-deps chromium
+
+      - name: Start the demo app
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          node examples/demo-app.mjs &
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:4310/health && break; sleep 0.25; done
+
+      # The demo app ships with three deliberate defects. This job asserts the pipeline finds
+      # exactly those three — a green run here would mean the pipeline stopped looking.
+      - name: Run the pipeline through every gate
+        if: steps.gate.outputs.run == 'true'
+        env:
+          APP_BASE_URL: http://127.0.0.1:4310
+          API_BASE_URL: http://127.0.0.1:4310
+          TEST_USERNAME: demo@example.com
+          TEST_PASSWORD: demo-pass
+        run: |
+          set +e
+          node pipeline/orchestrator.mjs run examples/demo-spec.json
+          for gate in CP1 CP2 CP3 CP4 CP5; do
+            node pipeline/orchestrator.mjs approve spec-demo-items "$gate"
+            node pipeline/orchestrator.mjs run examples/demo-spec.json
+          done
+          set -e
+          node -e "
+            const a = require('./pipeline/runs/spec-demo-items/artifacts/05-targeted-run.json');
+            const failed = a.results.filter(r => r.verdict === 'fail').map(r => r.id).sort();
+            console.log(a.passed + ' passed · ' + a.failed + ' failed · ' + a.skipped + ' skipped');
+            // Agents choose what to write, so the exact case ids are not fixed.
+            // What must hold is that real execution happened and the planted
+            // defects surfaced: a run with nothing failing means the agents
+            // stopped looking, which is the failure this job exists to catch.
+            if (a.ran === 0) { console.error('nothing was executed'); process.exit(1); }
+            if (a.failed === 0) { console.error('the demo app has planted defects; a clean run means they were missed'); process.exit(1); }
+            console.log('executed ' + a.ran + ' case(s) and surfaced ' + a.failed + ' failure(s) against a deliberately broken app');
+          "
+
+      - name: All twelve agents produced a result
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const dir = 'pipeline/runs/spec-demo-items/artifacts';
+            const want = ['00-preflight','01-scope','02-architecture','03-case-design','3b-publish',
+                          '04-generate','05-targeted-run','06-self-heal','07-regression','08-review',
+                          '09-finalise','a09-performance','a10-design-parity','a11-ai-eval','a12-drift'];
+            const missing = want.filter(p => !fs.existsSync(dir + '/' + p + '.json'));
+            if (missing.length) { console.error('no artifact from: ' + missing.join(', ')); process.exit(1); }
+            for (const p of want) {
+              const e = JSON.parse(fs.readFileSync(dir + '/' + p + '.json', 'utf8'));
+              if (e.schema !== 'aqa.artifact' || e.version !== 1) { console.error(p + ' is not a versioned artifact'); process.exit(1); }
+            }
+            console.log('all 15 phases wrote a versioned artifact');
+          "
+
+      - name: No credential reached an artifact
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          if grep -rEl 'demo-token|demo-pass' pipeline/runs/ 2>/dev/null; then
+            echo 'a credential leaked into a run artifact'; exit 1
+          fi
+          echo 'no credential in any artifact'
+
+      - name: Export the dashboard from the real run
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          node pipeline/report.mjs
+          node -e "
+            const s = require('fs').readFileSync('dashboard/data.js','utf8');
+            const d = JSON.parse(s.slice(s.indexOf('{'), s.lastIndexOf('}')+1));
+            if (!d.tests.length) { console.error('the export is empty'); process.exit(1); }
+            console.log(d.cycles.length + ' cycle(s), ' + d.tests.length + ' test(s) exported');
+          "
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aqa-run-artifacts
+          path: pipeline/runs/
+          if-no-files-found: ignore

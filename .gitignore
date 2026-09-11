@@ -1,7 +1,12 @@
-node_modules/
-.env
 *.log
-test-results/
-playwright-report/
+.env
 .features-gen/
 dashboard/out/
+node_modules/
+pipeline/runs/
+playwright-report/
+test-results/
+
+# Generated from whichever run you last exported. Never committed: a run against a
+# private app would otherwise land in a public repo.
+dashboard/data.js

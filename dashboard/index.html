@@ -1,156 +1,389 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AQA Runs Explorer</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="cache-control" content="no-cache"><title>AQA Runs Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
-:root{--bg:#f6f7f9;--surface:#fff;--surface2:#eef1f5;--border:#e2e6ec;--ink:#0f1216;--muted:#5a6472;--faint:#8a93a1;--accent:#4f46e5;--accent-soft:#ecebfb;--ok:#12a150;--ok-soft:#e6f6ec;--gate:#b7791f;--gate-soft:#fbf1df;--fail:#d64550;--fail-soft:#fce8ea;--run:#2f6feb;--run-soft:#e6effc;--stub:#8a93a1;--stub-soft:#f1f3f6;--mono:ui-monospace,Menlo,Consolas,monospace;--shadow:0 1px 2px rgba(16,18,22,.05),0 8px 24px rgba(16,18,22,.06)}
-@media(prefers-color-scheme:dark){:root{--bg:#0c0e12;--surface:#14171d;--surface2:#1b1f27;--border:#262b34;--ink:#e8ebf0;--muted:#98a2b2;--faint:#69727f;--accent:#8b83ff;--accent-soft:#1e1b3a;--ok:#3fb950;--ok-soft:#12241a;--gate:#d6a531;--gate-soft:#2a2113;--fail:#f0616a;--fail-soft:#2a1417;--run:#5b9bff;--run-soft:#14233d;--stub:#69727f;--stub-soft:#191d24;--shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px rgba(0,0,0,.45)}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1200px;margin:0 auto;padding:24px 20px 90px}
-.eyebrow{text-transform:uppercase;letter-spacing:.11em;font-size:11px;font-weight:700;color:var(--accent);margin:0 0 5px}
-h1{font-size:clamp(21px,2.8vw,28px);line-height:1.12;margin:0 0 5px;letter-spacing:-.02em}
-.subt{color:var(--muted);font-size:13.5px;margin:0;max-width:84ch}
-.crumb{display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--faint);margin-bottom:10px;flex-wrap:wrap}
-.crumb button{background:none;border:none;color:var(--accent);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;padding:0}
-.crumb .sep{opacity:.5}
-.search{display:flex;gap:10px;align-items:center;margin:16px 0 6px}
-.search input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 14px;font:inherit;font-size:14px;color:var(--ink)}
-.search input:focus{outline:2px solid var(--accent);border-color:var(--accent)}
-.count{font-size:12.5px;color:var(--faint);white-space:nowrap}
-.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--surface2);color:var(--muted);white-space:nowrap}
-.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.gate{background:var(--gate-soft);color:var(--gate)}.pill.fail{background:var(--fail-soft);color:var(--fail)}.pill.run{background:var(--run-soft);color:var(--run)}.pill.muted{background:var(--stub-soft);color:var(--faint)}
-.empty{color:var(--faint);font-size:13.5px;text-align:center;padding:34px}
-.back{display:inline-flex;gap:7px;align-items:center;background:none;border:none;color:var(--accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:6px 0}
+/* ─────────────────────────────────────────────────────────────────────────
+   AQA Runs Explorer
 
-/* milestone block */
-.ms{margin-top:24px}
-.ms-h{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline;padding-bottom:7px;border-bottom:1px solid var(--border)}
-.ms-t{font-size:16px;font-weight:650;letter-spacing:-.01em;background:none;border:none;padding:0;color:var(--ink);cursor:pointer;font-family:inherit}
-.ms-t:hover{color:var(--accent)}
-.ms-m{font-size:12px;color:var(--muted)}
-.ms-m b{font-family:var(--mono);color:var(--ink)}
-.cov{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:11.5px;color:var(--muted)}
-.covbar{width:110px;height:8px;border-radius:4px;background:var(--surface2);border:1px solid var(--border);overflow:hidden}
-.covbar>i{display:block;height:100%;background:var(--accent)}
+   Warm, light, editorial. A QA board is read for a long time and shown to
+   people who did not write the tests, so it is built like a document with
+   real typographic hierarchy rather than a dense instrument panel.
 
-/* cycle tiles */
-.cycles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:11px;margin-top:12px}
-.cyc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;box-shadow:var(--shadow);text-align:left;width:100%;font:inherit;color:inherit;display:flex;flex-direction:column;gap:8px}
-.cyc:hover{border-color:var(--accent)}
-.cyc-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
-.cyc-id{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
-.cyc-n{font-weight:650;font-size:15px;margin-top:2px;line-height:1.25}
-.cyc-m{color:var(--muted);font-size:11.5px;margin-top:3px}
-.cyc-row{display:flex;flex-wrap:wrap;gap:5px 14px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px}
-.cyc-row b{font-family:var(--mono);font-size:12px;color:var(--ink)}
-.agbar{display:flex;gap:2.5px}
-.agbar i{flex:1;height:6px;border-radius:2px;background:var(--stub-soft);border:1px solid var(--border)}
-.agbar i.ok{background:var(--ok);border-color:var(--ok)}
-.agbar i.gate{background:var(--gate);border-color:var(--gate)}
-.agbar i.na{background:var(--stub);border-color:var(--stub);opacity:.3}
-.vbar{display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--surface2);border:1px solid var(--border)}
-.vbar span{height:100%}.vbar .p{background:var(--ok)}.vbar .f{background:var(--fail)}.vbar .b{background:var(--gate)}.vbar .n{background:var(--stub);opacity:.35}
+   The one ornament is made of the run's own data: the pipeline ribbon on the
+   explorer is twelve agents' actual states, not decoration.
 
-/* summary tiles */
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin:16px 0 4px}
-.tile{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px 14px;box-shadow:var(--shadow)}
-.tile .n{font-size:23px;font-weight:700;font-family:var(--mono);letter-spacing:-.02em}
-.tile .l{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-top:2px}
-.tile .s{font-size:11.5px;color:var(--muted);margin-top:3px}
-.dhead{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;margin:2px 0 3px}.dhead h2{font-size:22px;margin:0;letter-spacing:-.015em}
-.kv{font-size:12.5px;color:var(--muted)}.kv b{color:var(--ink);font-family:var(--mono);font-size:12px}
-.sec{margin-top:26px}
-.sec h3{font-size:15px;margin:0 0 3px;letter-spacing:-.01em}
-.sec .h-sub{font-size:12.5px;color:var(--muted);margin:0 0 9px}
+   Type: Bricolage Grotesque for display, Inter Tight for interface,
+   JetBrains Mono for anything that is data. Figures are tabular everywhere a
+   person compares them.
+   ───────────────────────────────────────────────────────────────────────── */
 
-/* filters */
-.filters{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);margin:12px 0}
-.frow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:5px 0}
-.flab{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);width:58px;flex:none}
-.fchip{font-size:11.5px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 11px;color:var(--muted);cursor:pointer;font-family:inherit;font-weight:600}
-.fchip:hover{border-color:var(--accent);color:var(--accent)}
-.fchip.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.fchip .c{opacity:.65;font-weight:500;margin-left:3px}
+:root {
+  /* a warm neutral, biased toward the accent rather than a dead grey */
+  --bg:        #FBF7F4;
+  --bg-tint:   #F6EFEA;
+  --surface:   #FFFFFF;
+  --surface-2: #FAF6F3;
+  --sunk:      #F4EEE9;
+  --border:    #EBE2DC;
+  --border-2:  #DCD0C8;
 
-.tw{overflow-x:auto;border:1px solid var(--border);border-radius:11px;background:var(--surface);box-shadow:var(--shadow)}
-table{width:100%;border-collapse:collapse;font-size:12.8px;min-width:620px}
-th{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);background:var(--surface2);white-space:nowrap}
-td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5}
-tr:last-child td{border-bottom:none}
-tr.clk{cursor:pointer}tr.clk:hover td{background:var(--accent-soft)}
-.mono{font-family:var(--mono);font-size:12px}
-.cid{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);white-space:nowrap}
-.arrowc{color:var(--faint);text-align:right;white-space:nowrap}
-.chip{font-size:10.5px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;color:var(--muted);display:inline-block;margin:1px 2px 1px 0;white-space:nowrap}
-.chip.ty{background:var(--accent-soft);border-color:var(--accent-soft);color:var(--accent)}
-.chip.ly{background:var(--run-soft);border-color:var(--run-soft);color:var(--run)}
+  --ink:    #191411;
+  --ink-2:  #3D342E;
+  --muted:  #5E534B;
+  --faint:  #7B6E65;
 
-/* trace page */
-.layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;align-items:start;margin-top:14px}
-.layout>*{min-width:0}
-@media(max-width:880px){.layout{grid-template-columns:1fr}}
-.nav{position:sticky;top:12px;display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 24px);overflow-y:auto;min-width:0}
-.nav-item{display:flex;align-items:center;gap:8px;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;cursor:pointer;color:var(--ink);font:inherit;font-size:12.5px}
-.nav-item:hover{border-color:var(--accent)}.nav-item.active{background:var(--accent-soft);border-color:var(--accent)}
-.ni-dot{width:9px;height:9px;border-radius:50%;background:var(--stub);flex:none;opacity:.35}.ni-dot.ok{background:var(--ok);opacity:1}.ni-dot.gate{background:var(--gate);opacity:1}.ni-dot.fail{background:var(--fail);opacity:1}
-.ni-n{font-family:var(--mono);font-size:10px;color:var(--faint);width:15px;flex:none}
-.ni-a{font-weight:600;flex:1;line-height:1.25;min-width:0;overflow-wrap:anywhere}
-.ni-g{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:10px;background:var(--gate-soft);color:var(--gate)}.ni-g.ok{background:var(--ok-soft);color:var(--ok)}
-.nav-lbl{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin:12px 0 3px;padding-left:3px}
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
-.p-head{display:flex;align-items:center;gap:9px;margin-bottom:4px;flex-wrap:wrap}.p-head h3{font-size:18px;margin:0}.p-id{color:var(--faint);font-size:12px;font-family:var(--mono)}
-.io{border:1px solid var(--border);border-radius:12px;padding:12px 15px;margin:9px 0}
-.io.in{background:var(--surface2)}.io.out{background:var(--accent-soft)}
-.io-h{font-size:10.5px;font-weight:700;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.io-h .from{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:2px 9px;font-size:10.5px;color:var(--accent);font-weight:700;cursor:pointer;font-family:inherit}
-.io-h .from:hover{border-color:var(--accent)}
-.io p{font-size:13.5px;margin:6px 0}
-.arrow{text-align:center;font-size:11px;color:var(--faint);margin:2px 0}
-.stepnav{display:flex;justify-content:space-between;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
-.stepnav button{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 13px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);cursor:pointer;max-width:48%;text-align:left}
-.stepnav button:hover{border-color:var(--accent);color:var(--accent)}
-.stepnav button[disabled]{opacity:.35;cursor:default}
-.stepnav .lbl{display:block;font-size:9.5px;color:var(--faint);letter-spacing:.07em;text-transform:uppercase;font-weight:700;margin-bottom:1px}
-pre{font-family:var(--mono);font-size:11.6px;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:11px 13px;overflow-x:auto;white-space:pre-wrap;margin:6px 0;line-height:1.5}
-.gherkin .kw{color:var(--accent);font-weight:700}
-.sub{font-size:12px;font-weight:700;color:var(--muted);margin:12px 0 3px}
-.sub2{font-size:11.5px;color:var(--faint);display:block;margin-top:6px;line-height:1.55}
-.sbar{display:flex;height:13px;border-radius:7px;overflow:hidden;background:var(--surface);margin:2px 0 8px;border:1px solid var(--border)}.seg{height:100%}.seg.ok{background:var(--ok)}.seg.gate{background:var(--gate)}.seg.stub{background:var(--stub)}
-.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted)}.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}.dot.ok{background:var(--ok)}.dot.gate{background:var(--gate)}.dot.stub{background:var(--stub)}.dot.fail{background:var(--fail)}
-ol,ul{margin:6px 0;padding-left:20px}li{margin:4px 0;font-size:12.8px}
-.banner{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 9px 9px 0;font-size:12.8px;margin:12px 0;color:var(--ink)}
-.banner.warn{border-left-color:var(--gate);background:var(--gate-soft)}
-.banner.bad{border-left-color:var(--fail);background:var(--fail-soft)}
-.banner b{display:block;margin-bottom:2px}
+  --accent:      #5B3DF5;
+  --accent-ink:  #4A2FD6;
+  --accent-soft: #EFEBFE;
+  --accent-line: #D5CBFB;
 
-/* agent brief */
-.brief{border:1px solid var(--border);border-radius:12px;background:var(--surface2);padding:13px 15px;margin:10px 0 14px}
-.brief-h{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
-.brief-does{font-size:13.8px;line-height:1.55;margin:0 0 10px}
-.brief-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px;border-top:1px solid var(--border);padding-top:10px}
-.brief-cell .k{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:2px}
-.brief-cell .v{font-size:12.4px;line-height:1.5;color:var(--muted)}
-.brief-cell.never .k{color:var(--fail)}
-.brief-cell .v code,.brief-cell .v .mono{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
+  --ok:   #10794C;  --ok-soft:   #E7F5EE;  --ok-line:   #B5DECA;
+  --fail: #C7304A;  --fail-soft: #FCEBEE;  --fail-line: #F2C2CB;
+  --gate: #9A6512;  --gate-soft: #FBF1E0;  --gate-line: #E9D3AA;
+  --run:  #2665D0;  --run-soft:  #E9F0FD;  --run-line:  #C2D6F7;
+  --stub: #C3B7AE;  --stub-soft: #F4EEE9;
 
-/* expandable io */
-details.io{border:1px solid var(--border);border-radius:12px;margin:9px 0;padding:0;overflow:hidden}
-details.io.in{background:var(--surface2)}details.io.out{background:var(--accent-soft)}
-details.io>summary{list-style:none;cursor:pointer;padding:11px 15px;display:flex;flex-wrap:wrap;gap:7px;align-items:center;font-size:10.5px;font-weight:700;letter-spacing:.05em;color:var(--muted);user-select:none}
-details.io>summary::-webkit-details-marker{display:none}
-details.io>summary:hover{color:var(--accent)}
-details.io>summary .tw-caret{font-size:9px;color:var(--faint);transition:transform .14s;display:inline-block;width:9px}
-details.io[open]>summary .tw-caret{transform:rotate(90deg)}
-details.io>summary .peek{font-weight:500;letter-spacing:0;text-transform:none;font-size:11.5px;color:var(--faint);margin-left:auto}
-details.io[open]>summary .peek{display:none}
-.io-body{padding:0 15px 13px}
-details.raw{border:1px solid var(--border);border-radius:9px;background:var(--surface);margin-top:10px;overflow:hidden}
-details.raw>summary{list-style:none;cursor:pointer;padding:7px 11px;font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--muted);display:flex;gap:7px;align-items:center;user-select:none}
-details.raw>summary::-webkit-details-marker{display:none}
-details.raw>summary:hover{color:var(--accent)}
-details.raw>summary .tw-caret{font-size:9px;color:var(--faint);transition:transform .14s;display:inline-block;width:9px}
-details.raw[open]>summary .tw-caret{transform:rotate(90deg)}
-details.raw pre{margin:0;border:none;border-top:1px solid var(--border);border-radius:0;background:transparent;font-size:11px}
-.foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--border);font-size:11.5px;color:var(--faint)}
-</style></head><body>
+  --display: "Bricolage Grotesque", "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --sans:    "Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --r: 14px; --r-s: 10px; --r-xs: 7px;
+  --shadow:   0 1px 2px rgba(60,40,28,.04), 0 12px 32px -14px rgba(60,40,28,.14);
+  --shadow-2: 0 2px 6px rgba(60,40,28,.06), 0 24px 60px -20px rgba(60,40,28,.20);
+  --ring: 0 0 0 3px rgba(91,61,245,.14);
+}
+
+/* the dark side is a re-checked swap, kept for reading beside a terminal */
+:root[data-theme="dark"] {
+  --bg:#0F0D11; --bg-tint:#151218; --surface:#171419; --surface-2:#1D1922; --sunk:#131016;
+  --border:#282330; --border-2:#37303F;
+  --ink:#F3EFEC; --ink-2:#D3CBC6; --muted:#B3A8A2; --faint:#9A8F98;
+  --accent:#9B85FF; --accent-ink:#B4A2FF; --accent-soft:#211B36; --accent-line:#3E3363;
+  --ok:#4ED18F; --ok-soft:#0F2A1E; --ok-line:#215239;
+  --fail:#FF7386; --fail-soft:#2D1419; --fail-line:#5E2831;
+  --gate:#EAB25E; --gate-soft:#2B2013; --gate-line:#584220;
+  --run:#6BA5FF; --run-soft:#111F35; --run-line:#24426D;
+  --stub:#4E4657; --stub-soft:#1A161F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px -16px rgba(0,0,0,.6);
+  --shadow-2:0 2px 8px rgba(0,0,0,.45), 0 28px 64px -24px rgba(0,0,0,.7);
+  --ring:0 0 0 3px rgba(155,133,255,.22);
+}
+
+* { box-sizing: border-box }
+html { color-scheme: light dark }
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(900px 520px at 88% -6%,  rgba(255,178,120,.20), transparent 62%),
+    radial-gradient(760px 460px at 4%  -2%,  rgba(139,110,255,.16), transparent 60%),
+    linear-gradient(180deg, var(--bg-tint) 0%, var(--bg) 34%);
+  background-attachment: fixed;
+}
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(900px 520px at 88% -6%, rgba(255,140,90,.10), transparent 62%),
+    radial-gradient(760px 460px at 4%  -2%, rgba(139,110,255,.14), transparent 60%),
+    linear-gradient(180deg, var(--bg-tint) 0%, var(--bg) 34%);
+}
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 44px 28px 120px }
+@media (max-width: 720px) { .wrap { padding: 26px 16px 72px } }
+
+/* ── headings ─────────────────────────────────────────── */
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 16px;
+}
+h1 {
+  font-family: var(--display);
+  font-size: clamp(38px, 6vw, 62px); line-height: .98;
+  letter-spacing: -.035em; font-weight: 600; margin: 0 0 18px;
+  text-wrap: balance; max-width: 18ch;
+}
+.subt { color: var(--muted); font-size: 17px; margin: 0; max-width: 62ch; line-height: 1.65 }
+
+/* ── breadcrumb ───────────────────────────────────────── */
+.crumb { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; font-family: var(--mono); font-size: 12.5px; color: var(--faint); margin-bottom: 26px; letter-spacing: .02em }
+.crumb button { background: none; border: none; padding: 3px 0; cursor: pointer; font: inherit; color: var(--muted); border-bottom: 1px solid transparent; transition: color .14s, border-color .14s }
+.crumb button:hover { color: var(--accent-ink); border-bottom-color: var(--accent-line) }
+.crumb .sep { opacity: .35 }
+
+/* ── search ───────────────────────────────────────────── */
+.search { display: flex; gap: 14px; align-items: center; margin: 30px 0 6px }
+.search input {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; padding: 14px 22px; font: inherit; font-size: 14.5px;
+  color: var(--ink); transition: border-color .14s, box-shadow .14s; box-shadow: var(--shadow);
+}
+.search input::placeholder { color: var(--faint) }
+.search input:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring) }
+.count { font-family: var(--mono); font-size: 11.5px; color: var(--faint); white-space: nowrap; font-variant-numeric: tabular-nums }
+
+/* ── pills ────────────────────────────────────────────── */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: .04em;
+  padding: 4px 11px; border-radius: 999px;
+  background: var(--stub-soft); color: var(--muted); border: 1px solid var(--border); white-space: nowrap;
+}
+.pill::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor }
+.pill.ok    { background: var(--ok-soft);   color: var(--ok);   border-color: var(--ok-line) }
+.pill.fail  { background: var(--fail-soft); color: var(--fail); border-color: var(--fail-line) }
+.pill.gate  { background: var(--gate-soft); color: var(--gate); border-color: var(--gate-line) }
+.pill.run   { background: var(--run-soft);  color: var(--run);  border-color: var(--run-line) }
+.pill.muted { background: var(--stub-soft); color: var(--faint) }
+
+.empty { color: var(--faint); font-size: 14px; text-align: center; padding: 56px }
+.back { display: inline-flex; gap: 7px; align-items: center; background: none; border: none; color: var(--accent-ink); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; padding: 8px 0 }
+.back:hover { text-decoration: underline; text-underline-offset: 4px }
+
+/* ── milestone band ───────────────────────────────────── */
+.ms { margin-top: 52px }
+.ms-h { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: baseline; padding-bottom: 14px; border-bottom: 1px solid var(--border) }
+.ms-t { font-family: var(--display); font-size: 24px; font-weight: 600; letter-spacing: -.028em; background: none; border: none; padding: 0; cursor: pointer; color: var(--ink) }
+.ms-t:hover { color: var(--accent-ink) }
+.ms-m { font-family: var(--mono); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; letter-spacing: .02em }
+.ms-m b { color: var(--muted); font-weight: 500 }
+.cov { display: flex; align-items: center; gap: 10px; margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .09em }
+.covbar { width: 130px; height: 6px; border-radius: 999px; background: var(--sunk); border: 1px solid var(--border); overflow: hidden }
+.covbar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #FF9A5A, var(--accent)) }
+
+/* ── cycle cards ──────────────────────────────────────── */
+.cycles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; margin-top: 22px }
+.cyc {
+  position: relative; overflow: hidden; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: 24px 26px; cursor: pointer; text-align: left; width: 100%;
+  font: inherit; color: inherit; display: flex; flex-direction: column; gap: 16px;
+  box-shadow: var(--shadow); transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s, border-color .18s;
+}
+.cyc::after {
+  content: ""; position: absolute; inset: auto -30% -60% auto; width: 240px; height: 240px;
+  background: radial-gradient(circle, rgba(255,154,90,.16), transparent 68%);
+  pointer-events: none; opacity: 0; transition: opacity .25s;
+}
+.cyc:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); border-color: var(--border-2) }
+.cyc:hover::after { opacity: 1 }
+.cyc:focus-visible { outline: none; box-shadow: var(--ring) }
+.cyc-top { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between }
+.cyc-id { font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: .07em; text-transform: uppercase }
+.cyc-n { font-family: var(--display); font-weight: 600; font-size: 25px; letter-spacing: -.03em; margin-top: 8px; line-height: 1.1 }
+.cyc-m { color: var(--muted); font-size: 13px; margin-top: 7px; font-family: var(--mono) }
+.cyc-row { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 12px; color: var(--faint); border-top: 1px solid var(--border); padding-top: 14px; font-variant-numeric: tabular-nums }
+.cyc-row b { font-family: var(--mono); font-size: 15px; color: var(--ink); font-weight: 600; letter-spacing: -.02em }
+
+/* the pipeline ribbon: twelve agents, their real states */
+.agbar { display: flex; gap: 3px; height: 22px; align-items: flex-end }
+.agbar i {
+  flex: 1; height: 8px; border-radius: 999px; background: var(--stub-soft);
+  border: 1px solid var(--border); transition: height .2s cubic-bezier(.2,.7,.3,1);
+}
+.cyc:hover .agbar i { height: 14px }
+.agbar i.ok   { background: linear-gradient(180deg, var(--accent), #7B5BFF); border-color: transparent }
+.agbar i.gate { background: linear-gradient(180deg, #FFB55A, var(--gate)); border-color: transparent }
+.agbar i.na   { background: var(--stub); border-color: transparent; opacity: .4 }
+
+.vbar { display: flex; height: 7px; border-radius: 999px; overflow: hidden; background: var(--sunk); border: 1px solid var(--border) }
+.vbar span { height: 100% }
+.vbar .p { background: var(--ok) } .vbar .f { background: var(--fail) }
+.vbar .b { background: var(--gate) } .vbar .n { background: var(--stub); opacity: .45 }
+
+/* ── stat tiles ───────────────────────────────────────── */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin: 34px 0 8px }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 22px 24px; box-shadow: var(--shadow) }
+.tile .n { font-family: var(--display); font-size: 42px; font-weight: 600; letter-spacing: -.045em; font-variant-numeric: tabular-nums; line-height: 1 }
+.tile .l { font-family: var(--mono); font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .1em; margin-top: 12px }
+.tile .s { font-size: 12.5px; color: var(--muted); margin-top: 6px }
+
+.dhead { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin: 6px 0 10px }
+.dhead h2 { font-family: var(--display); font-size: clamp(28px, 4vw, 40px); margin: 0; letter-spacing: -.035em; font-weight: 600; line-height: 1.05; text-wrap: balance }
+.kv { font-family: var(--mono); font-size: 12.5px; color: var(--faint); display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; letter-spacing: .02em }
+.kv b { color: var(--ink-2); font-weight: 500 }
+
+.sec { margin-top: 52px }
+.sec h3 { font-family: var(--display); font-size: 24px; margin: 0 0 6px; letter-spacing: -.028em; font-weight: 600 }
+.sec .h-sub { font-size: 15px; color: var(--muted); margin: 0 0 18px; max-width: 68ch }
+
+/* ── filters ──────────────────────────────────────────── */
+.filters { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 18px 20px; margin: 20px 0; box-shadow: var(--shadow) }
+.frow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 }
+.flab { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); width: 60px; flex: none }
+.fchip {
+  font-family: var(--mono); font-size: 11.5px; background: var(--sunk);
+  border: 1px solid transparent; border-radius: 999px; padding: 6px 14px;
+  color: var(--muted); cursor: pointer; transition: all .14s;
+}
+.fchip:hover { background: var(--surface); border-color: var(--border-2); color: var(--ink-2) }
+.fchip.on { background: var(--ink); border-color: var(--ink); color: var(--bg) }
+.fchip .c { opacity: .55; margin-left: 6px; font-variant-numeric: tabular-nums }
+
+/* ── tables ───────────────────────────────────────────── */
+.tw { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); box-shadow: var(--shadow) }
+table { width: 100%; border-collapse: collapse; font-size: 15px; min-width: 640px }
+th {
+  text-align: left; padding: 14px 20px; border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--faint); background: var(--surface-2); white-space: nowrap; font-weight: 500;
+}
+td { padding: 17px 20px; border-bottom: 1px solid var(--border); vertical-align: middle; font-variant-numeric: tabular-nums }
+tr:last-child td { border-bottom: none }
+tr.clk { cursor: pointer; transition: background .12s }
+tr.clk:hover td { background: var(--surface-2) }
+tr.clk:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent) }
+
+.mono { font-family: var(--mono); font-size: 13px }
+.cid { font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--accent-ink); white-space: nowrap; letter-spacing: .02em }
+.arrowc { color: var(--faint); text-align: right; white-space: nowrap; font-size: 12px }
+tr.clk:hover .arrowc { color: var(--accent-ink) }
+
+.chip { font-family: var(--mono); font-size: 11.5px; background: var(--sunk); border: 1px solid transparent; border-radius: 999px; padding: 3px 10px; color: var(--muted); display: inline-block; margin: 1px 4px 1px 0; white-space: nowrap }
+.chip.ty { background: var(--accent-soft); color: var(--accent-ink) }
+.chip.ly { background: var(--run-soft); color: var(--run) }
+
+/* ── trace layout ─────────────────────────────────────── */
+.layout { display: grid; grid-template-columns: 268px minmax(0, 1fr); gap: 32px; align-items: start; margin-top: 30px }
+.layout > * { min-width: 0 }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; gap: 20px } }
+
+.nav { position: sticky; top: 22px; display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 44px); overflow-y: auto; min-width: 0; padding-right: 6px }
+.nav::-webkit-scrollbar { width: 5px } .nav::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px }
+.nav-item {
+  display: flex; align-items: center; gap: 11px; text-align: left; background: transparent;
+  border: 1px solid transparent; border-radius: 999px; padding: 10px 15px; cursor: pointer;
+  color: var(--ink-2); font: inherit; font-size: 14px; transition: background .12s, color .12s;
+}
+.nav-item:hover { background: var(--surface); color: var(--ink-2) }
+.nav-item.active { background: var(--ink); color: var(--bg) }
+.nav-item.active .ni-n, .nav-item.active .ni-dot { color: var(--bg); opacity: .7 }
+.ni-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--stub); flex: none; opacity: .5 }
+.ni-dot.ok { background: var(--ok); opacity: 1 } .ni-dot.gate { background: var(--gate); opacity: 1 } .ni-dot.fail { background: var(--fail); opacity: 1 }
+.ni-n { font-family: var(--mono); font-size: 11px; color: var(--faint); width: 14px; flex: none; font-variant-numeric: tabular-nums }
+.ni-a { font-weight: 500; flex: 1; line-height: 1.3; min-width: 0; overflow-wrap: anywhere }
+.nav-item.active .ni-a { font-weight: 600 }
+.ni-g { font-family: var(--mono); font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 999px; background: var(--gate-soft); color: var(--gate) }
+.ni-g.ok { background: var(--ok-soft); color: var(--ok) }
+.nav-item.active .ni-g { background: rgba(255,255,255,.16); color: var(--bg) }
+.nav-lbl { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin: 26px 0 10px; padding-left: 14px }
+.nav-lbl:first-child { margin-top: 0 }
+
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 34px 38px; box-shadow: var(--shadow) }
+@media (max-width: 720px) { .panel { padding: 22px 20px } }
+.p-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap }
+.p-head h3 { font-family: var(--display); font-size: 30px; margin: 0; letter-spacing: -.032em; font-weight: 600 }
+.p-id { color: var(--faint); font-size: 11px; font-family: var(--mono); letter-spacing: .1em; text-transform: uppercase }
+
+/* ── agent brief ──────────────────────────────────────── */
+.brief { border: 1px solid var(--border); border-radius: var(--r-s); background: var(--surface-2); padding: 24px 26px; margin: 22px 0 26px }
+.brief-h { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-bottom: 12px }
+.brief-does { font-size: 17px; line-height: 1.55; margin: 0 0 22px; color: var(--ink); letter-spacing: -.012em; max-width: 62ch }
+.brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 22px; border-top: 1px solid var(--border); padding-top: 20px }
+.brief-cell .k { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); display: block; margin-bottom: 7px }
+.brief-cell .v { font-size: 14px; line-height: 1.6; color: var(--muted) }
+.brief-cell.never .k { color: var(--fail) }
+.brief-cell .v .mono { color: var(--accent-ink); font-size: 12px }
+
+/* ── expandable io ────────────────────────────────────── */
+details.io { border: 1px solid var(--border); border-radius: var(--r-s); margin: 14px 0; overflow: hidden; background: var(--surface-2) }
+details.io.out { background: linear-gradient(180deg, var(--accent-soft), var(--surface)); border-color: var(--accent-line) }
+details.io > summary {
+  list-style: none; cursor: pointer; padding: 16px 22px; display: flex; flex-wrap: wrap;
+  gap: 10px; align-items: center; font-family: var(--mono); font-size: 11px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--muted); user-select: none;
+}
+details.io > summary::-webkit-details-marker { display: none }
+details.io > summary:hover { color: var(--ink) }
+details.io > summary .tw-caret { font-size: 8px; color: var(--faint); transition: transform .16s; display: inline-block; width: 8px }
+details.io[open] > summary .tw-caret { transform: rotate(90deg) }
+details.io > summary .from {
+  font-family: var(--mono); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; padding: 5px 13px; font-size: 11px; color: var(--accent-ink);
+  cursor: pointer; letter-spacing: .04em; text-transform: none; transition: all .14s;
+}
+details.io > summary .from:hover { border-color: var(--accent); box-shadow: var(--ring) }
+details.io > summary .peek { letter-spacing: .02em; text-transform: none; font-size: 11px; color: var(--faint); margin-left: auto }
+details.io[open] > summary .peek { display: none }
+.io-body { padding: 0 22px 22px }
+.io-body p { font-size: 15.5px; margin: 10px 0; color: var(--ink-2) }
+
+details.raw { border: 1px solid var(--border); border-radius: var(--r-xs); background: var(--sunk); margin-top: 16px; overflow: hidden }
+details.raw > summary { list-style: none; cursor: pointer; padding: 10px 14px; font-family: var(--mono); font-size: 11px; color: var(--faint); display: flex; gap: 9px; align-items: center; user-select: none; letter-spacing: .09em; text-transform: uppercase }
+details.raw > summary::-webkit-details-marker { display: none }
+details.raw > summary:hover { color: var(--accent-ink) }
+details.raw > summary .tw-caret { font-size: 8px; transition: transform .16s; display: inline-block; width: 8px }
+details.raw[open] > summary .tw-caret { transform: rotate(90deg) }
+details.raw pre { margin: 0; border: none; border-top: 1px solid var(--border); border-radius: 0; background: transparent; font-size: 12.5px; max-height: 400px; overflow: auto }
+
+.arrow { text-align: center; font-size: 12px; color: var(--faint); margin: 6px 0; opacity: .5 }
+
+.stepnav { display: flex; justify-content: space-between; gap: 14px; margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--border) }
+.stepnav button {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
+  padding: 12px 20px; font: inherit; font-size: 13px; font-weight: 500; color: var(--ink-2);
+  cursor: pointer; max-width: 48%; text-align: left; transition: all .14s;
+}
+.stepnav button:hover:not([disabled]) { background: var(--ink); border-color: var(--ink); color: var(--bg) }
+.stepnav button:hover:not([disabled]) .lbl { color: rgba(255,255,255,.6) }
+.stepnav button[disabled] { opacity: .35; cursor: default }
+.stepnav .lbl { display: block; font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px }
+
+/* ── code ─────────────────────────────────────────────── */
+pre { font-family: var(--mono); font-size: 13px; line-height: 1.75; background: var(--sunk); border: 1px solid var(--border); border-radius: var(--r-xs); padding: 18px 20px; overflow-x: auto; white-space: pre-wrap; margin: 12px 0; color: var(--ink-2) }
+pre::-webkit-scrollbar { height: 5px } pre::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px }
+.gherkin .kw { color: var(--accent-ink); font-weight: 600 }
+
+.sub { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin: 26px 0 10px }
+.sub2 { font-size: 13.5px; color: var(--faint); display: block; margin-top: 12px; line-height: 1.65 }
+
+.sbar { display: flex; height: 7px; border-radius: 999px; overflow: hidden; background: var(--sunk); margin: 6px 0 14px; border: 1px solid var(--border) }
+.seg { height: 100% } .seg.ok { background: var(--ok) } .seg.gate { background: var(--gate) } .seg.stub { background: var(--stub) }
+
+.legend { display: flex; flex-wrap: wrap; gap: 24px; font-size: 12.5px; color: var(--muted); margin-top: 34px }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; margin-right: 8px }
+.dot.ok { background: var(--ok) } .dot.gate { background: var(--gate) } .dot.stub { background: var(--stub) } .dot.fail { background: var(--fail) }
+
+ol, ul { margin: 12px 0; padding-left: 22px } li { margin: 8px 0; font-size: 14.5px; color: var(--ink-2) }
+
+.banner { border: 1px solid var(--accent-line); border-left-width: 3px; background: var(--accent-soft); padding: 18px 22px; border-radius: var(--r-xs); font-size: 15px; margin: 18px 0; color: var(--ink-2) }
+.banner.warn { border-color: var(--gate-line); border-left-color: var(--gate); background: var(--gate-soft) }
+.banner.bad  { border-color: var(--fail-line); border-left-color: var(--fail); background: var(--fail-soft) }
+.banner b { display: block; margin-bottom: 5px; color: var(--ink); font-weight: 600; font-size: 14px }
+
+.provenance {
+  display: flex; align-items: center; gap: 10px; margin: 22px 0 0;
+  font-family: var(--mono); font-size: 13px; color: var(--muted); letter-spacing: .02em;
+}
+.provenance b { color: var(--ink); font-weight: 600 }
+.provenance .dotline { width: 6px; height: 6px; border-radius: 999px; background: var(--ok); flex: none; box-shadow: 0 0 0 3px var(--ok-soft) }
+.provenance.is-example .dotline { background: var(--gate); box-shadow: 0 0 0 3px var(--gate-soft) }
+
+.foot { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--faint) }
+
+#themeToggle {
+  position: fixed; top: 26px; right: 26px; z-index: 20; width: 42px; height: 42px;
+  border-radius: 999px; background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1;
+  display: grid; place-items: center; box-shadow: var(--shadow); transition: all .16s;
+}
+#themeToggle:hover { color: var(--accent-ink); border-color: var(--accent-line); transform: translateY(-1px) }
+@media (max-width: 720px) { #themeToggle { top: 12px; right: 12px; width: 36px; height: 36px } }
+
+::selection { background: var(--accent-line); color: var(--ink) }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important } }
+</style>
+
+</head><body>
+<button id="themeToggle" type="button" aria-label="Switch between dark and light" title="Theme"></button>
 <div class="wrap" id="app"></div>
+<script src="data.js" onerror="window.__AQA_NO_DATA=1"></script>
 <script>
 /* ═════════════════════════════════════════════════════════════════════════
    AQA · Runs Explorer
@@ -345,6 +578,102 @@ function inJson(t,id){
   return outJson(t,prev.id);
 }
 
+
+/* ── traces from real artifacts ───────────────────────────────────────────
+   When a run has been exported, a trace panel is rendered from the artifact the
+   phase actually wrote, sliced to the test you clicked. The hand-authored
+   builders below are only for the bundled example; pointing them at exported
+   data was reading fields that a real artifact does not have. */
+function liveArtifact(test, phaseId) {
+  const byRun = (LIVE && LIVE.traces && LIVE.traces[test.cycle]) || null;
+  const env = byRun && byRun[phaseId];
+  return env ? (env.schema === "aqa.artifact" ? env.data : env) : null;
+}
+
+/** The part of a phase artifact that belongs to THIS test, when it has one. */
+function sliceFor(phaseId, a, id) {
+  if (!a) return null;
+  const find = (arr) => (Array.isArray(arr) ? arr.find((x) => x.id === id) : null);
+  switch (phaseId) {
+    case "01-scope":        return find(a.in_scope) || find(a.deferred) || null;
+    case "02-architecture": return find(a.objectives);
+    case "03-case-design":  return find(a.cases);
+    case "3b-publish":      return (a.writes_pending || []).find((w) => String(w.payload && w.payload.summary).startsWith(id)) || null;
+    case "04-generate":     return find(a.runnable) || find(a.skipped) || null;
+    case "05-targeted-run": return find(a.results);
+    case "06-self-heal":    return find(a.triaged);
+    case "07-regression":   return find(a.results);
+    default:                return null;
+  }
+}
+
+function kvTable(o) {
+  if (!o || typeof o !== "object") return "";
+  const rows = Object.entries(o)
+    .filter(([, v]) => v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0))
+    .map(([k, v]) => {
+      const val = Array.isArray(v)
+        ? v.map((x) => `<div class="mono" style="margin:1px 0">${esc(typeof x === "object" ? JSON.stringify(x) : x)}</div>`).join("")
+        : typeof v === "object"
+          ? `<span class="mono">${esc(JSON.stringify(v))}</span>`
+          : `<span class="mono">${esc(v)}</span>`;
+      return `<tr><td style="white-space:nowrap;color:var(--muted)">${esc(k)}</td><td>${val}</td></tr>`;
+    })
+    .join("");
+  return rows ? `<table><tbody>${rows}</tbody></table>` : "";
+}
+
+/** Headline sentence per phase, from the real artifact. */
+function liveHeadline(phaseId, a, test) {
+  if (!a) return "This phase produced no artifact in this run.";
+  if (a.status === "not_configured" || a.status === "not_applicable")
+    return `<div class="banner warn"><b>${esc(a.status.replace("_", " "))}</b>${esc(a.reason || "")}</div>`;
+  switch (phaseId) {
+    case "00-preflight":    return `<p>Probed <b>${(a.routes || []).length}</b> route(s); auth ${a.auth && a.auth.obtained ? "obtained" : "not obtained"}. <b>${(a.findings || []).length}</b> finding(s).</p>`;
+    case "01-scope":        return `<p><b>${(a.in_scope || []).length}</b> in scope, <b>${(a.deferred || []).length}</b> deferred, confidence <b>${a.confidence}</b>. ${esc(a.rationale || "")}</p>`;
+    case "02-architecture": return `<p><b>${(a.objectives || []).length}</b> objective(s). ${(a.risks || []).length ? "Risks: " + a.risks.map(esc).join("; ") : "No risks flagged."}</p>`;
+    case "03-case-design":  return `<p><b>${a.scenarios}</b> scenario(s) in <span class="mono">${esc(a.file || "")}</span>; <b>${(a.untagged || []).length}</b> untagged.</p>`;
+    case "3b-publish":      return `<p><b>${a.testcases}</b> payload(s) built. <span class="pill ${a.sent ? "" : "ok"}">sent = ${a.sent}</span>${a.dry_run ? " (dry-run)" : ""}</p>`;
+    case "04-generate":     return `<p><b>${a.step_defs}</b> runnable, <b>${(a.skipped || []).length}</b> skipped with a reason.</p>`;
+    case "05-targeted-run": return `<p><b>${a.ran}</b> ran · <b>${a.passed}</b> passed · <b>${a.failed}</b> failed · <b>${a.skipped}</b> skipped.</p>`;
+    case "06-self-heal":    return `<p><b>${a.failures}</b> failure(s) · <b>${a.bugs_staged}</b> bug(s) staged · <b>${a.known_flaky_skipped}</b> environment.</p>`;
+    case "07-regression":   return `<p><b>${a.passed}</b>/<b>${a.total}</b> passed.</p>`;
+    case "08-review":       return `<p><b>${(a.findings || []).length}</b> finding(s) · <b>${a.blocking}</b> blocking.</p>`;
+    case "09-finalise":     return `<p><span class="mono">${esc(a.file || "")}</span> · coverage <b>${esc((a.entry || {}).coverage || "—")}</b>${a.note ? `<br><span class="sub2">${esc(a.note)}</span>` : ""}</p>`;
+    case "a09-performance": return `<p><b>${(a.steps || []).length}</b> step(s) measured · <b>${(a.findings || []).length}</b> breach(es).</p>`;
+    case "a12-drift":       return `<p><b>${a.checked}</b> checked · <b>${a.verified}</b> verified · <b>${a.drifted}</b> drifted · <b>${a.not_checked}</b> unchecked.</p>`;
+    default:                return `<p>Artifact produced.</p>`;
+  }
+}
+
+function liveTrace(test, phaseId) {
+  const a = liveArtifact(test, phaseId);
+  const prev = prevPhase(phaseId);
+  const prevA = prev ? liveArtifact(test, prev.id) : null;
+  const mine = sliceFor(phaseId, a, test.id);
+  const prevMine = prev ? sliceFor(prev.id, prevA, test.id) : null;
+
+  const inHtml = prev
+    ? (prevA
+        ? `<p>What <b>${esc(prev.a)}</b> produced${prevMine ? ` for <span class="mono">${esc(test.id)}</span>` : ""}, handed straight over.</p>` +
+          (prevMine ? kvTable(prevMine) : liveHeadline(prev.id, prevA, test))
+        : `<p class="sub2">The previous phase produced no artifact in this run, so nothing was handed over.</p>`)
+    : `<p>The written intent for this flow, and the running app it was probed against.</p>` +
+      (a && a.app ? kvTable(a.app) : "");
+
+  const outHtml = a
+    ? liveHeadline(phaseId, a, test) +
+      (mine ? `<div class="sub">For ${esc(test.id)}</div>${kvTable(mine)}` : "") +
+      (phaseId === "05-targeted-run" && mine && mine.checks
+        ? `<div class="sub">Checks</div><table><thead><tr><th>Check</th><th>Expected</th><th>Actual</th><th></th></tr></thead><tbody>${mine.checks
+            .map((c) => `<tr><td>${esc(c.check)}</td><td class="mono">${esc(c.expected)}</td><td class="mono">${esc(c.actual)}</td><td>${c.ok ? '<span class="pill ok">ok</span>' : '<span class="pill fail">differs</span>'}</td></tr>`)
+            .join("")}</tbody></table>`
+        : "")
+    : `<div class="banner warn"><b>Not reached in this run</b>No artifact was written for this phase.</div>`;
+
+  return { in: inHtml, out: outHtml, inJson: prev ? prevA : (a && a.app) || null, outJson: a };
+}
+
 /* ── per-test trace builders ────────────────────────────────────────────
    Each builder renders ONE agent for ONE test. The input is always framed
    as what arrived from the agent before it, so the chain is explicit.
@@ -483,14 +812,14 @@ probe   : ${(t.probe||[]).map(x=>x.what+" = "+(x.found?"found":x.found===false?"
    pipeline stops honestly at CP2.
    Replace this block with your own cycle data.
    ──────────────────────────────────────────────────────────────────────── */
-const MILESTONES=[
+let MILESTONES=[
  {id:"MS-24", name:"Release 2.4", owner:"qa-lead", window:"25 Aug → 05 Sep 2026", status:"complete",
   note:"The regression pass that shipped 2.4. Every gated agent ran to a knowledge-base entry, with the performance and drift tracks running alongside."},
  {id:"MS-25", name:"Release 2.5", owner:"qa-lead", window:"01 Sep → 19 Sep 2026", status:"in progress",
   note:"In flight. The first cycle stopped at CP2 because the feature it was asked to test has not been built yet."},
 ];
 
-const CYCLES=[
+let CYCLES=[
  {id:"CY-24-R1", milestone:"MS-24", name:"Release regression", kind:"regression",
   target:"Acme Shop · staging", source:"tracker · AQA-EP-*",
   started:"2026-09-01 10:12", ended:"2026-09-01 16:40", status:"complete", awaiting:null,
@@ -565,7 +894,7 @@ const C=o=>Object.assign({
   probeNote:"The control does not exist in this build. Later phases will skip rather than invent a selector, and the cycle holds at CP2 for a human.",
 }, o);
 
-const TESTS=[
+let TESTS=[
 /* ── checkout ─────────────────────────────────────────────────────────── */
 R({id:"AQA-101", title:"Complete a card checkout", type:"positive", area:"checkout", verdict:"pass", duration:"4.2s",
   spec:{source:"tracker", ref:"AQA-EP-CHECKOUT / AQA-101", text:"A signed-in shopper with one item can pay by card and receive a confirmation number."},
@@ -774,6 +1103,19 @@ C({id:"AQA-207", title:"Remove a saved item", type:"guard",
 ];
 
 
+/* ── real data, when a run has been exported ──────────────────────────────
+   `node pipeline/report.mjs` writes dashboard/data.js from artifacts the pipeline
+   actually produced. Without it the board shows the bundled example and says so,
+   rather than passing illustrative numbers off as a run. */
+const LIVE = (typeof window !== "undefined" && window.AQA_DATA) ? window.AQA_DATA : null;
+let LIVE_FINDINGS = {};
+if (LIVE) {
+  MILESTONES = LIVE.milestones;
+  CYCLES = LIVE.cycles;
+  TESTS = LIVE.tests;
+  LIVE_FINDINGS = LIVE.findings ?? {};
+}
+
 /* ── helpers ────────────────────────────────────────────────────────────── */
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 const cyclesOf=m=>CYCLES.filter(c=>c.milestone===m.id);
@@ -839,8 +1181,11 @@ function renderExplorer(q){
     </div><div class="cycles">${tiles}</div></section>`;
   }).join("");
 
+  const source = LIVE
+    ? `<p class="provenance"><span class="dotline"></span>Showing <b>${LIVE.cycles.length} real run${LIVE.cycles.length === 1 ? "" : "s"}</b>, exported ${esc(String(LIVE.generatedAt).replace("T", " ").slice(0, 16))} from <span class="mono">pipeline/runs</span></p>`
+    : `<p class="provenance is-example"><span class="dotline"></span>Showing the <b>bundled example</b>. Run the pipeline, then <span class="mono">node pipeline/report.mjs</span>, to replace this with your own runs</p>`;
   return `<p class="eyebrow">AQA · Autonomous QA</p><h1>Runs Explorer</h1>
-  <p class="subt">Every milestone, the cycles inside it, and how far each one got. Open a cycle to see the individual tests it ran, then open a test to watch all 12 agents pass it hand to hand, input to output.</p>
+  <p class="subt">Every milestone, the cycles inside it, and how far each one got. Open a cycle to see the individual tests it ran, then open a test to watch all 12 agents pass it hand to hand, input to output.</p>${source}
   <div class="tiles">
     <div class="tile"><div class="n">${MILESTONES.length}</div><div class="l">Milestones</div><div class="s">${CYCLES.length} cycles inside them</div></div>
     <div class="tile"><div class="n">${allT}</div><div class="l">Tests</div><div class="s">${passT} passing · ${allT-passT} not</div></div>
@@ -926,6 +1271,7 @@ function renderCycle(id){
 
 /* ── LEVEL 4 · one test, traced agent by agent ─────────────────────────── */
 function traceFor(test,phaseId){
+  if (LIVE) return liveTrace(test, phaseId);          // real artifacts win
   const bespoke=(test.trace||{})[phaseId];
   if(bespoke)return bespoke;
   const B=BUILD[phaseId];
@@ -933,6 +1279,14 @@ function traceFor(test,phaseId){
 }
 const ASYNC_FIELD={"a09-performance":"perf","a10-design-parity":"parity","a11-ai-eval":"aieval","a12-drift":"drift"};
 function phaseStatus(test,p){
+  if (LIVE) {
+    const c = CYCLES.find((x) => x.id === test.cycle) || {};
+    if ((c.na || []).includes(p.id)) return "na";
+    if ((c.ran || []).includes(p.id)) {
+      return p.id === "05-targeted-run" && VER(test.verdict) === "f" ? "fail" : "ok";
+    }
+    return c.awaiting && p.gate === c.awaiting ? "gate" : "";
+  }
   if((test.na||[]).includes(p.id))return "na";
   // An async track is "ran" exactly when it has data for this test — the dot can
   // never claim a track ran while the panel says it was not configured.
@@ -996,7 +1350,10 @@ function renderTest(testId,phaseId){
     const k=Object.keys(o);
     return `<span class="peek">${k.length} field${k.length!==1?"s":""} · ${esc(k.slice(0,3).join(", "))}${k.length>3?"…":""}</span>`;
   };
-  const ji=inJson(test,cur), jo=outJson(test,cur);
+  // With a real run, the payloads are the artifacts themselves; the generators below only
+  // know the bundled example's shape.
+  const ji = LIVE ? (tr.inJson ?? null) : inJson(test, cur);
+  const jo = LIVE ? (tr.outJson ?? null) : outJson(test, cur);
 
   return `<div class="crumb"><button onclick="go('#/')">Runs Explorer</button><span class="sep">/</span><button onclick="go('#/milestone/${m.id}')">${esc(m.name)}</button><span class="sep">/</span><button onclick="go('#/cycle/${c.id}')">${esc(c.name)}</button><span class="sep">/</span><span>${esc(test.id)}</span></div>
   <div class="dhead"><h2>${esc(test.id)} · ${esc(test.title)}</h2>${verdictPill(test.verdict)}</div>
@@ -1027,11 +1384,40 @@ function go(h){location.hash=h;}
 function onSearch(v){const pos=(document.getElementById("q")||{}).selectionStart;paint(renderExplorer(v));const q=document.getElementById("q");if(q){q.focus();if(pos!=null)q.setSelectionRange(pos,pos);}}
 function route(){
   const h=location.hash||"#/";let m;
-  if((m=h.match(/^#\/test\/([^/]+)(?:\/(.+))?$/)))  paint(renderTest(decodeURIComponent(m[1]),m[2]?decodeURIComponent(m[2]):null));
-  else if((m=h.match(/^#\/cycle\/(.+)$/)))          {FILTER={type:"all",area:"all"};paint(renderCycle(decodeURIComponent(m[1])));}
-  else if((m=h.match(/^#\/milestone\/(.+)$/)))      paint(renderMilestone(decodeURIComponent(m[1])));
-  else                                              paint(renderExplorer(""));
+  try {
+    if((m=h.match(/^#\/test\/([^/]+)(?:\/(.+))?$/)))  paint(renderTest(decodeURIComponent(m[1]),m[2]?decodeURIComponent(m[2]):null));
+    else if((m=h.match(/^#\/cycle\/(.+)$/)))          {FILTER={type:"all",area:"all"};paint(renderCycle(decodeURIComponent(m[1])));}
+    else if((m=h.match(/^#\/milestone\/(.+)$/)))      paint(renderMilestone(decodeURIComponent(m[1])));
+    else                                              paint(renderExplorer(""));
+  } catch (e) {
+    // A view that throws used to leave the previous screen on the page, so a click looked like
+    // it did nothing. Say what broke instead, and keep the board navigable.
+    paint(`<button class="back" onclick="go('#/')">← Runs Explorer</button>
+      <div class="banner bad"><b>This view failed to render</b>
+        <span class="mono">${esc(String(e && e.message || e))}</span>
+        <div class="sub2">Route <span class="mono">${esc(h)}</span>. The rest of the board still works.</div>
+      </div>`);
+    if (window.console) console.error("AQA dashboard render failed on", h, e);
+  }
   window.scrollTo(0,0);
 }
+// Theme: dark unless the reader has asked for light. localStorage can throw in a private
+// window or with site data blocked, so every access is guarded and the page still renders.
+(function theme() {
+  const KEY = "aqa.theme";
+  let saved = null;
+  try { saved = localStorage.getItem(KEY); } catch {}
+  const apply = (t) => document.documentElement.setAttribute("data-theme", t);
+  apply(saved === "dark" ? "dark" : "light");
+  const btn = document.getElementById("themeToggle");
+  const paint = () => { btn.textContent = document.documentElement.getAttribute("data-theme") === "dark" ? "◐" : "◑"; };
+  paint();
+  btn.addEventListener("click", () => {
+    const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+    apply(next); paint();
+    try { localStorage.setItem(KEY, next); } catch {}
+  });
+})();
+
 window.addEventListener("hashchange",route);route();
 </script></body></html>

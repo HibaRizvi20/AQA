@@ -1,0 +1,272 @@
+{
+  "target": "examples/demo-app.mjs",
+  "note": "What is actually wrong with the demo app, and what is deliberately right. Scoring a QA architecture needs ground truth: without it, 'found 6 issues' cannot be told apart from 'invented 6 issues'. Every defect here is planted in the source and reproducible.",
+  "defects": [
+    {
+      "id": "GT-01",
+      "severity": "high",
+      "area": "add item",
+      "summary": "Re-adding a previously deleted link returns 500",
+      "where": "POST /v1/items after a DELETE of the same url",
+      "expected": "201, saved again as a fresh entry",
+      "actual": "500 SERVER_ERROR",
+      "why_it_matters": "Deleting something and saving it again is ordinary behaviour, and it hard-errors.",
+      "detectable_by": "API",
+      "accept_if_mentions": [
+        "re-add",
+        "readd",
+        "previously deleted",
+        "tombstone",
+        "delete then add",
+        "500"
+      ],
+      "require_signals": 2
+    },
+    {
+      "id": "GT-02",
+      "severity": "medium",
+      "area": "add item",
+      "summary": "A non-web scheme is rewritten instead of refused",
+      "where": "POST /v1/items with ftp://example.com/f",
+      "expected": "400 INVALID_URL",
+      "actual": "201, stored as https://ftp://example.com/f",
+      "why_it_matters": "A malformed URL is stored and rendered to the user as a link that goes nowhere.",
+      "detectable_by": "API",
+      "accept_if_mentions": [
+        "ftp",
+        "scheme",
+        "non-web",
+        "rewritten",
+        "prefix",
+        "https://ftp"
+      ],
+      "require_signals": 2
+    },
+    {
+      "id": "GT-03",
+      "severity": "low",
+      "area": "delete item",
+      "summary": "A malformed id is a server error rather than a client error",
+      "where": "DELETE /v1/items/not-an-id",
+      "expected": "400 or 404",
+      "actual": "500 SERVER_ERROR",
+      "why_it_matters": "A caller's typo is reported as the server's fault, which hides real faults in the noise.",
+      "detectable_by": "API",
+      "accept_if_mentions": [
+        "malformed",
+        "not-an-id",
+        "invalid id",
+        "500",
+        "client error"
+      ],
+      "require_signals": 2
+    },
+    {
+      "id": "GT-04",
+      "severity": "medium",
+      "area": "delete item",
+      "summary": "Two buttons render the same glyph with no accessible name",
+      "where": "GET /items-page \u2014 the card delete and the banner dismiss both render \u2715",
+      "expected": "each control is distinguishable and has an accessible name",
+      "actual": "both are a bare \u2715; only title distinguishes them, and the banner one has no test id",
+      "why_it_matters": "A screen reader announces two identical unlabelled buttons, and a glyph selector reaches the wrong one.",
+      "detectable_by": "UI",
+      "accept_if_mentions": [
+        "ambiguous",
+        "same glyph",
+        "\u2715",
+        "aria-label",
+        "accessible name",
+        "two buttons",
+        "dismiss"
+      ],
+      "require_signals": 2
+    }
+  ],
+  "correct_behaviours": [
+    {
+      "id": "OK-01",
+      "summary": "An empty URL is refused with 400 INVALID_URL",
+      "trap": "Reporting this as a defect is a false positive.",
+      "recognise_if_mentions": [
+        "empty url",
+        "empty link",
+        "url is required"
+      ]
+    },
+    {
+      "id": "OK-02",
+      "summary": "Saving the same link twice is refused with 409 ALREADY_SAVED",
+      "trap": "A duplicate refusal is correct behaviour, not a bug.",
+      "recognise_if_mentions": [
+        "duplicate",
+        "already saved",
+        "409",
+        "saved twice"
+      ]
+    },
+    {
+      "id": "OK-03",
+      "summary": "An unauthenticated request is refused with 401",
+      "trap": "Correct.",
+      "recognise_if_mentions": [
+        "unauthenticated",
+        "401",
+        "no credentials"
+      ]
+    },
+    {
+      "id": "OK-04",
+      "summary": "Deleting an id that does not exist returns 404",
+      "trap": "Correct. Only a MALFORMED id is wrong (GT-03); an unknown well-formed id is right.",
+      "recognise_if_mentions": [
+        "unknown id",
+        "does not exist",
+        "404",
+        "nonexistent"
+      ]
+    },
+    {
+      "id": "OK-05",
+      "summary": "A URL over 2048 characters is refused with 400",
+      "trap": "Correct.",
+      "recognise_if_mentions": [
+        "2048",
+        "over-length",
+        "too long"
+      ]
+    },
+    {
+      "id": "OK-06",
+      "summary": "A bare host without a scheme is accepted and stored as https://",
+      "trap": "This is deliberate and correct. Reporting it as a defect alongside GT-02 shows the scheme rule was not understood: a bare host declares no scheme, ftp:// declares one.",
+      "recognise_if_mentions": [
+        "bare host",
+        "without a scheme",
+        "no scheme",
+        "prepends https"
+      ]
+    }
+  ],
+  "scoring": {
+    "true_positive": "a reported defect that matches one in `defects`",
+    "false_negative": "a defect in `defects` that was not reported",
+    "false_positive": "a reported defect that matches a `correct_behaviours` trap, or names no real defect",
+    "note": "OK-06 is the sharpest trap in the set. An architecture that refuses a bare host has misread the rule, not found a bug.",
+    "triage_classes": [
+      "product_defect",
+      "valid_behaviour",
+      "requirement_misunderstanding",
+      "test_false_alarm",
+      "inconclusive"
+    ],
+    "self_correction": "Only CORRECT corrections count. Overturning a trap or rescuing a real defect scores; arguing a real defect away is counted as harm and nets against the score."
+  },
+  "triage_expectations": [
+    {
+      "observable": "500 on re-adding a deleted link",
+      "correct_class": "product_defect",
+      "why_it_matters": "a server error for ordinary user behaviour"
+    },
+    {
+      "observable": "201 for an ftp scheme",
+      "correct_class": "product_defect",
+      "why_it_matters": "a malformed URL is stored and shown as a link"
+    },
+    {
+      "observable": "500 for a malformed id",
+      "correct_class": "product_defect",
+      "why_it_matters": "a caller's typo reported as the server's fault"
+    },
+    {
+      "observable": "two identical glyph buttons",
+      "correct_class": "product_defect",
+      "why_it_matters": "an accessibility defect first, a test-stability one second"
+    },
+    {
+      "observable": "409 on a duplicate save",
+      "correct_class": "valid_behaviour",
+      "why_it_matters": "refusing a duplicate is the documented rule"
+    },
+    {
+      "observable": "201 for a bare host with no scheme",
+      "correct_class": "valid_behaviour",
+      "why_it_matters": "the sharpest trap: a bare host declares no scheme, ftp:// declares one"
+    },
+    {
+      "observable": "404 for an unknown but well-formed id",
+      "correct_class": "valid_behaviour",
+      "why_it_matters": "only a MALFORMED id is wrong"
+    },
+    {
+      "observable": "401 without credentials",
+      "correct_class": "valid_behaviour",
+      "why_it_matters": "correct"
+    },
+    {
+      "observable": "400 for a url over 2048 characters",
+      "correct_class": "valid_behaviour",
+      "why_it_matters": "the documented bound"
+    }
+  ],
+  "requirement_probes": [
+    {
+      "probe": "recognises that a delete is a soft delete, so the row survives",
+      "accept_if_mentions": [
+        "soft delete",
+        "tombstone",
+        "deleted_at",
+        "row survives",
+        "not removed"
+      ],
+      "weight": 3,
+      "why_it_matters": "this is what makes the re-add defect predictable from the requirement rather than only discoverable by running into it"
+    },
+    {
+      "probe": "distinguishes a declared scheme from a bare host",
+      "accept_if_mentions": [
+        "declares a scheme",
+        "bare host",
+        "no scheme",
+        "scheme is present"
+      ],
+      "weight": 3,
+      "why_it_matters": "the difference between finding GT-02 and falsely flagging OK-06"
+    },
+    {
+      "probe": "notices that duplicate refusal is intended behaviour",
+      "accept_if_mentions": [
+        "duplicate",
+        "already saved",
+        "409 is correct",
+        "not a bug"
+      ],
+      "weight": 2,
+      "why_it_matters": "a system that flags 409 has not read the requirement"
+    },
+    {
+      "probe": "separates a malformed id from an unknown id",
+      "accept_if_mentions": [
+        "malformed",
+        "well-formed",
+        "not a uuid",
+        "unknown id"
+      ],
+      "weight": 2,
+      "why_it_matters": "one is a defect and one is correct; conflating them costs both precision and recall"
+    },
+    {
+      "probe": "raises at least one genuine ambiguity rather than assuming",
+      "accept_if_mentions": [
+        "ambiguous",
+        "unclear",
+        "not specified",
+        "question",
+        "assumption"
+      ],
+      "weight": 1,
+      "why_it_matters": "reading a requirement honestly means noticing what it does not say"
+    }
+  ],
+  "frozen": "Defined before any benchmark run. Not to be changed after seeing results."
+}

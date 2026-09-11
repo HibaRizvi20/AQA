@@ -52,25 +52,113 @@ scope-bleed. Full write-up: [`docs/agents-guide.html`](docs/agents-guide.html).
 
 ## Run it
 
+AQA drives its own agents. It needs a key, and that is deliberate: the point is a tool that runs
+on its own, in CI or on a laptop, not one that only works inside a chat session.
+
 ```bash
-npm install
-cp .env.example .env                 # fill in your own demo values
-node pipeline/orchestrator.mjs DEMO-101 --status
-node pipeline/orchestrator.mjs DEMO-101 --approve CP1
-npx playwright test --grep "@area:checkout"     # pick tests by tag
+cp .env.example .env             # APP_BASE_URL and API_BASE_URL are required
+export ANTHROPIC_API_KEY=...     # the agents are the execution engine
+npm install                      # @anthropic-ai/sdk; playwright is optional
+
+npm test                         # 123 tests of the control layer, no key needed
+
+npm run demo:app &               # a small app with deliberate defects
+npm run demo                     # stops at CP1
+npm run aqa approve spec-demo-items CP1
+npm run demo                     # ... and so on through CP5
 ```
-Open `dashboard/index.html` for the **Runs Explorer**. It drills down in four levels:
 
-| Route | Level | Shows |
-|---|---|---|
-| `#/` | **Runs Explorer** | every milestone, the cycles inside it, coverage, dates and how far each cycle got |
-| `#/milestone/<id>` | **Milestone** | the cycles in that milestone, with per-cycle coverage and open gates |
-| `#/cycle/<id>` | **Cycle** | the individual tests it ran — filter by **type** (positive, negative, edge, guard, UI, API, performance) or by **area** (checkout, auth, …), or list them all |
-| `#/test/<test-id>/<agent-id>` | **Agent trace** | that one test, carried through all 12 agents |
+`--provider` and `--model` select the intelligence. That seam is what makes the comparison below
+runnable.
 
-The trace is **per test, not per run**. Open a test and each agent shows what it received from the agent before it and what it passes to the agent after it, for that test alone — pre-flight reconciles the written intent across every source and probes the running app, the Scope Analyst receives exactly that, and so on down the chain. Every panel names its neighbour, so the hand-off is never implied.
+## The architecture
 
-All 12 agents are in the trace nav: the 8 gated pipeline agents behind five human gates, and the 4 async tracks (Performance & Logs, Design Parity, AI Eval Analyst, Drift Detector) which report but never block a merge. An async track with nothing configured for the target renders as **not-run with its reason**, never as a pass, and the nav dot is derived from the panel so the two can never disagree.
+```
+                          AQA
+                           |
+              +------------+------------+
+              |                         |
+        CONTROL LAYER              INTELLIGENCE
+        deterministic                   |
+              |                    +----+-----+
+        orchestrator               | 12 agents|
+        state . gates              +----+-----+
+        retries . artifacts             |
+        logging . schemas           DECISION
+              |                         |
+              |                         v
+              |                    TOOL CALL
+              |                         |
+              |              +----------+----------+
+              |            probe       UI        tags
+              |           API/HTTP  Playwright   files
+              |              +----------+----------+
+              +-------------------------+
+                                   OBSERVATIONS
+                                        |
+                                        v
+                                  AGENT REASONS
+```
+
+The rule that decides which half owns a step:
+
+> Never move a decision into deterministic code merely because it can be written as an if/else.
+> If it requires understanding a requirement, interpreting evidence, choosing a strategy,
+> diagnosing behaviour, generating tests or judging quality, it belongs to an agent.
+>
+> Never ask an agent to perform an exact mechanical operation. If it is "save this JSON", "run
+> this test", "apply this tag", "retry three times" or "create this file", it belongs to code.
+
+The sharpest case is the targeted run. The agent chooses what to run; the runner runs it and
+writes the verdict. **A model is never the thing that says a test passed.** The same holds inside
+Triage: it proposes a repair, and the repair only counts as healed once the runner re-ran it and
+it actually passed.
+
+A remit is held three ways, in increasing strength:
+
+| | |
+|---|---|
+| **the prompt** | the agent's own definition, including its "You do NOT" clauses, verbatim |
+| **capability** | the tools it is handed. The Reviewer is given no file tool, so it *cannot* fix what it finds |
+| **structure** | separate invocations, separate artifacts, a human gate between several of them |
+
+A test asserts the second one: if the Reviewer is ever granted file tools, the suite fails.
+
+## Single agent versus twelve
+
+A fair challenge on this architecture is whether the split earns its cost. That is a measurable
+question, so it is measured rather than argued.
+
+```bash
+npm run ab
+```
+
+Mode A is one capable agent with one wide prompt doing the whole workflow. Mode B is the
+twelve-agent pipeline. **Both get the same toolbelt, the same application, the same requirement
+and the same model**, so the variable under test is the intelligence architecture and nothing
+else.
+
+Scoring needs ground truth, so `examples/demo-ground-truth.json` declares what is actually wrong
+with the demo app *and* what is deliberately right. Without the traps, "found six issues" cannot
+be told apart from "invented six issues", and the false-positive column is the one that decides
+whether a QA tool is worth having.
+
+The harness reports requirements understood, ambiguities surfaced, cases generated and executed,
+true and false positives, recall and precision, coverage gaps named, self-heal attempts versus
+verified heals, human checkpoints, tokens, cost and wall clock.
+
+One run of each on one application is evidence, not proof. Run it across several specs before
+believing the shape.
+
+### What it will not do
+
+- **Report a probe it could not run as a pass.** No token, an unresolved placeholder, a failed
+  setup step — each is `skipped` with its reason.
+- **Stamp the Feature Registry when the run was not clean.** `verified_against_live` stays null
+  and the artifact says why.
+- **Write a credential to an artifact.** Tokens live in memory for the length of the process; a
+  test asserts no artifact contains one.
+- **Walk past an unapproved gate**, including on a resume.
 
 ## Skills demonstrated
 
