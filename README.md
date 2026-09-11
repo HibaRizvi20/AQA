@@ -52,145 +52,103 @@ scope-bleed. Full write-up: [`docs/agents-guide.html`](docs/agents-guide.html).
 
 ## Run it
 
-The pipeline runs on **Node alone**. There is no model in the execution path, no API key, and no
-install step — so the same spec against the same build produces the same artifacts, and a
-difference between two runs is a difference in the app.
+AQA drives its own agents. It needs a key, and that is deliberate: the point is a tool that runs
+on its own, in CI or on a laptop, not one that only works inside a chat session.
 
 ```bash
-cp .env.example .env          # APP_BASE_URL and API_BASE_URL are required
-npm test                      # 118 unit + integration tests, no dependencies
+cp .env.example .env             # APP_BASE_URL and API_BASE_URL are required
+export ANTHROPIC_API_KEY=...     # the agents are the execution engine
+npm install                      # @anthropic-ai/sdk; playwright is optional
 
-# see the whole thing work in one command
-npm run demo:full             # starts the demo app, walks every gate, exports the dashboard
-open dashboard/index.html     # the board, showing the run you just made
+npm test                         # 123 tests of the control layer, no key needed
 
-# or drive it a gate at a time
-npm run demo:app &
-npm run demo                  # stops at CP1
+npm run demo:app &               # a small app with deliberate defects
+npm run demo                     # stops at CP1
 npm run aqa approve spec-demo-items CP1
-npm run demo                  # ... and so on through CP5
+npm run demo                     # ... and so on through CP5
 ```
 
-Installed as a package it is `aqa run <spec>`, `aqa approve <run> CP1`, `aqa report`.
+`--provider` and `--model` select the intelligence. That seam is what makes the comparison below
+runnable.
 
-The demo run ends with **8 passed · 3 failed** — the three defects planted in the demo app, found
-by the pipeline itself. CI asserts exactly those three: a fully green demo run would mean the
-pipeline had stopped looking.
+## The architecture
 
-### The dashboard shows your run, not an example
+```
+                          AQA
+                           |
+              +------------+------------+
+              |                         |
+        CONTROL LAYER              INTELLIGENCE
+        deterministic                   |
+              |                    +----+-----+
+        orchestrator               | 12 agents|
+        state . gates              +----+-----+
+        retries . artifacts             |
+        logging . schemas           DECISION
+              |                         |
+              |                         v
+              |                    TOOL CALL
+              |                         |
+              |              +----------+----------+
+              |            probe       UI        tags
+              |           API/HTTP  Playwright   files
+              |              +----------+----------+
+              +-------------------------+
+                                   OBSERVATIONS
+                                        |
+                                        v
+                                  AGENT REASONS
+```
 
-`node pipeline/report.mjs` reads the artifacts a run actually wrote and generates
-`dashboard/data.js`. The board then shows real milestones, cycles, tests and per-agent traces.
-With no export it falls back to the bundled example **and says so in a banner** — illustrative
-numbers are never presented as a run.
+The rule that decides which half owns a step:
 
-### Commands
+> Never move a decision into deterministic code merely because it can be written as an if/else.
+> If it requires understanding a requirement, interpreting evidence, choosing a strategy,
+> diagnosing behaviour, generating tests or judging quality, it belongs to an agent.
+>
+> Never ask an agent to perform an exact mechanical operation. If it is "save this JSON", "run
+> this test", "apply this tag", "retry three times" or "create this file", it belongs to code.
 
-| Command | Does |
+The sharpest case is the targeted run. The agent chooses what to run; the runner runs it and
+writes the verdict. **A model is never the thing that says a test passed.** The same holds inside
+Triage: it proposes a repair, and the repair only counts as healed once the runner re-ran it and
+it actually passed.
+
+A remit is held three ways, in increasing strength:
+
+| | |
 |---|---|
-| `node pipeline/orchestrator.mjs run <spec.json>` | run until the next unapproved gate |
-| `node pipeline/orchestrator.mjs status <runId>` | where the run got to |
-| `node pipeline/orchestrator.mjs approve <runId> CP1` | clear a gate and continue |
-| `node pipeline/orchestrator.mjs reject <runId> CP1 --reason "…"` | send the guarded phase back, discarding what was derived from it |
+| **the prompt** | the agent's own definition, including its "You do NOT" clauses, verbatim |
+| **capability** | the tools it is handed. The Reviewer is given no file tool, so it *cannot* fix what it finds |
+| **structure** | separate invocations, separate artifacts, a human gate between several of them |
 
-Add `--send` to let the Tracker Publisher actually write. Without it every external write is a
-dry-run: the payload is built, shown, and not sent.
+A test asserts the second one: if the Reviewer is ever granted file tools, the suite fails.
 
-An artifact is written per phase under `pipeline/runs/<runId>/artifacts/`. A run that found real
-failures exits **2**, so CI can act on it; a configuration or spec problem exits **1**.
+## Single agent versus twelve
 
-### The spec
+A fair challenge on this architecture is whether the split earns its cost. That is a measurable
+question, so it is measured rather than argued.
 
-A spec is what makes this runnable without a model: it states behaviours in a structured form,
-and every phase is a deterministic transform over it. A model is useful for turning a paragraph
-of prose *into* this shape — it is not needed to run the pipeline.
-
-```jsonc
-{
-  "id": "spec:demo-items",
-  "area": "items",
-  "routes": ["/", "/items-page"],
-  "auth": { "path": "/login", "tokenField": "accessToken" },
-  "behaviours": [{
-    "id": "DEMO-122",
-    "title": "Re-adding a previously deleted link saves it again",
-    "feature": "add item",
-    "when": ["I save the same link again"],
-    "then": "it is saved again as a fresh entry",
-
-    // Optional. With a contract the behaviour is executed for real; without one it is
-    // reported as skipped WITH that reason, never as a pass.
-    "contract": {
-      "method": "POST", "path": "/v1/items",
-      "body": { "url": "https://example.com/{run}" },   // {run} is unique per run
-      "expect": { "status": 201, "hasFields": ["id"] },
-      "setup": [                                        // runs first; `capture` feeds {id}
-        { "method": "POST", "path": "/v1/items", "body": { "url": "https://example.com/{run}" },
-          "expect": { "status": 201 }, "capture": "id" },
-        { "method": "DELETE", "path": "/v1/items/{id}", "expect": { "status": 204 } }
-      ]
-    }
-  }]
-}
+```bash
+npm run ab
 ```
 
-`{run}` is substituted with a per-run value through both paths and bodies, so a suite can be
-re-run against a stateful app without manual cleanup. Three consecutive runs against the same
-demo app give byte-identical results.
+Mode A is one capable agent with one wide prompt doing the whole workflow. Mode B is the
+twelve-agent pipeline. **Both get the same toolbelt, the same application, the same requirement
+and the same model**, so the variable under test is the intelligence architecture and nothing
+else.
 
-### UI behaviours
+Scoring needs ground truth, so `examples/demo-ground-truth.json` declares what is actually wrong
+with the demo app *and* what is deliberately right. Without the traps, "found six issues" cannot
+be told apart from "invented six issues", and the false-positive column is the one that decides
+whether a QA tool is worth having.
 
-A behaviour can carry `ui.steps` alongside (or instead of) a contract, and they are executed in a
-real browser:
+The harness reports requirements understood, ambiguities surfaced, cases generated and executed,
+true and false positives, recall and precision, coverage gaps named, self-heal attempts versus
+verified heals, human checkpoints, tokens, cost and wall clock.
 
-```jsonc
-"ui": { "steps": [
-  { "goto": "/items-page" },
-  { "fill": { "selector": "[data-testid=link]", "value": "https://example.com/{run}" } },
-  { "click": { "selector": "[data-testid=save]" } },
-  { "expectText": { "selector": "[data-testid=items]", "toContainText": "{run}" } }
-]}
-```
-
-Playwright is an **optional** peer. Without it, UI behaviours are reported as skipped with that
-reason — the core promise that the pipeline runs on Node alone still holds.
-
-A selector matching several elements is an **ambiguous selector finding**, not something the
-runner quietly resolves: a step that genuinely means "the first of several" says `"nth": 0`, and
-that intent is then visible in the artifact. Reaching the wrong ✕ is exactly the defect class this
-framework exists to surface.
-
-### All twelve agents run
-
-The four async tracks execute after the gated pipeline and never gate it:
-
-| Agent | Produces |
-|---|---|
-| 9 · Performance & Logs | p50/p95 per step against budgets **declared in the spec**, so a breach is a fact |
-| 10 · Design Parity | route-level comparison against a prototype, when one is connected |
-| 11 · AI Eval Analyst | deterministic checks over a golden dataset — no judge model in the runtime |
-| 12 · Drift Detector | re-verifies the Feature Registry against the live app |
-
-Without the configuration each needs, a track reports `not_configured` or `not_applicable`
-**with its reason**, and the nav dot is derived from the panel so the two can never disagree.
-
-### Robustness
-
-- **Retries are transport-only.** A connection reset is retried with exponential backoff and full
-  jitter; **an answered request never is.** A 500 is a result, and asking again until it changes is
-  precisely what this framework refuses to do. A retried probe records `attempts` so "passed on
-  attempt 3" is not indistinguishable from "passed".
-- **Bounded concurrency** (`CONCURRENCY`, default 4). Serial is unusably slow on a real suite;
-  unbounded turns the tool into a load test of the app it is measuring.
-- **Secrets are registered, not guessed.** Passwords from config and tokens from auth responses are
-  registered on read; every occurrence is stripped from logs, console output and artifacts. A test
-  asserts no artifact contains one, and CI greps the run directory as a second line of defence.
-- **Structured logs.** `AQA_LOG=json` for a log pipeline, `AQA_LOG_LEVEL=debug` for detail.
-- **Versioned artifacts.** Every artifact is an envelope (`schema`, `version`, `phase`, `runId`,
-  `producedAt`, `data`), so a consumer can refuse a shape it does not understand rather than
-  silently misread it.
-- **Repeatable against a stateful app.** `{run}` is unique per invocation and substituted through
-  paths and bodies; three consecutive runs give identical results.
+One run of each on one application is evidence, not proof. Run it across several specs before
+believing the shape.
 
 ### What it will not do
 

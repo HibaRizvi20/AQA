@@ -12,6 +12,14 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// This drives the real CLI end to end, so it needs a real model: the phases
+// invoke agents now. Without a key it is skipped rather than deleted, because
+// the scenario it covers is the one that matters most. The agentic layer's
+// testable parts live in lib/agentic.test.mjs and need no key.
+const HAS_KEY = Boolean(process.env.ANTHROPIC_API_KEY);
+const describeIfKey = HAS_KEY ? describe : describe.skip;
+if (!HAS_KEY) console.log("  i end-to-end pipeline tests skipped: ANTHROPIC_API_KEY is not set");
+
 const run = promisify(execFile);
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..");
@@ -60,7 +68,7 @@ const envelope = (name) => JSON.parse(fs.readFileSync(path.join(runsDir, RUN_ID,
 const artifact = (name) => envelope(name).data;
 const artifactExists = (name) => fs.existsSync(path.join(runsDir, RUN_ID, "artifacts", `${name}.json`));
 
-describe("the pipeline actually executes", () => {
+describeIfKey("the pipeline actually executes", () => {
   test("stops at CP1 instead of running to the end", async () => {
     const r = await aqa("run", SPEC);
     const out = String(r.stdout ?? "");
@@ -204,7 +212,7 @@ describe("the pipeline actually executes", () => {
   });
 });
 
-describe("resumability and rejection", () => {
+describeIfKey("resumability and rejection", () => {
   test("status reports where the run got to", async () => {
     const r = await aqa("status", RUN_ID);
     const out = String(r.stdout ?? "").replace(/\x1b\[[0-9;]*m/g, "");
@@ -232,7 +240,7 @@ describe("failure modes are reported, not thrown", () => {
     assert.equal(r.code, 1);
   });
 
-  test("an unreachable app is a blocking finding, not a crash", async () => {
+  (HAS_KEY ? test : test.skip)("an unreachable app is a blocking finding, not a crash", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "aqa-dead-"));
     const r = await run("node", [ORCH, "run", SPEC], {
       cwd: repo,

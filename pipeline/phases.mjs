@@ -1,613 +1,535 @@
-// The eleven pipeline phases, as deterministic functions over the spec.
+// The pipeline: twelve agents, five human gates.
 //
-// Each phase takes the artifacts produced before it and returns its own. No phase calls a model:
-// the pipeline runs end to end with nothing but Node and a reachable app. That is what makes a
-// run reproducible — the same spec against the same build gives the same artifacts, so a
-// difference between two runs is a difference in the APP, which is the entire point of a
-// regression suite.
+// Every phase has the same shape:
 //
-// A model is useful for turning prose into a spec (see spec.mjs). It is not in this path.
+//     load the previous artifact
+//        ↓  construct the agent's context
+//        ↓  invoke the specialised agent          ← the intelligence
+//        ↓  the agent reasons, using its permitted tools
+//        ↓  the agent returns a structured decision
+//        ↓  deterministic code carries it out     ← the mechanism
+//        ↓  validate, then persist
+//
+// Which half owns a step:
+//
+//   If it requires understanding a requirement, interpreting evidence, choosing
+//   a strategy, diagnosing behaviour, generating tests or judging quality, it is
+//   the AGENT's. It does not move into an if/else merely because it could be
+//   expressed as one.
+//
+//   If it is an exact mechanical operation — save this JSON, run this test,
+//   apply this tag, retry three times, create this file — it is CODE's, and an
+//   agent is never asked to do it by hand.
+//
+// The sharpest case is the targeted run. The agent chooses what to run; the
+// runner runs it and writes the verdict. A model never reports that a test
+// passed, because it is not the thing that decides whether it did.
+//
+// A remit is held three ways, in increasing strength: the agent's own
+// definition, the tools it is handed, and the structure of separate invocations
+// with a human gate between several of them. The Reviewer is given no file tool,
+// so "cannot fix its own findings" is a fact about its reach, not a request.
 
-import { applyTags, validateTags, explainType } from "./lib/tags.mjs";
-import { probeRoutes, authenticate, probeBehaviour, probeContract } from "./lib/probe.mjs";
-import { mapLimit } from "./lib/retry.mjs";
-import { log } from "./lib/log.mjs";
-import { loadDriver, runUiBehaviour } from "./lib/ui.mjs";
+import {systemPromptFor, extractJson} from "./lib/agents.mjs";
+import {buildTools} from "./lib/tools.mjs";
+import {executeCases, measure, verifyAnchors, buildTrackerWrites, writeArtifactFile} from "./lib/executor.mjs";
+import {log} from "./lib/log.mjs";
 
-const pct = (n, d) => (d === 0 ? 0 : +(n / d).toFixed(2));
+const pretty = (v) => JSON.stringify(v ?? null, null, 2);
 
-/* ── 00 · Pre-flight ──────────────────────────────────────────────────────
-   Reconciles the declared intent against the running app, and probes for what
-   the spec needs. Surfaces disagreement; never resolves it. */
-async function preflight({ spec, cfg, session }) {
-  const routes = await probeRoutes(cfg.APP_BASE_URL, spec.routes, { timeoutMs: cfg.REQUEST_TIMEOUT_MS });
-  const auth = await authenticate(cfg, spec.auth, { timeoutMs: cfg.REQUEST_TIMEOUT_MS });
-  if (session) session.token = auth.token ?? null; // in memory only — never written to an artifact
+/**
+ * Ask one agent for a decision.
+ *
+ * The prompt is assembled identically for every agent — what it received, what
+ * it must decide, the tools it holds, the shape of the answer. Keeping that
+ * uniform is what makes the single-agent comparison fair: the variable under
+ * test is the decomposition, not prompt craft.
+ */
+async function decide({agent, task, input, schema, toolsets = [], ctx}) {
+  const tools = buildTools(toolsets, ctx);
+  const prompt = [
+    `## What you must decide\n${task}`,
+    `## What you received\n\`\`\`json\n${pretty(input)}\n\`\`\``,
+    tools.length
+      ? `## Your tools\n${tools.map((t) => `- ${t.name}: ${t.description}`).join("\n")}\n\nThe running application is the source of truth. Use these rather than assuming, and report anything you could not verify, with the reason.`
+      : `## Your tools\nNone for this step. Decide from what you were given.`,
+    `## Answer with exactly this JSON and nothing else\n\`\`\`json\n${schema}\n\`\`\``,
+  ].join("\n\n");
 
-  const findings = [];
-  for (const r of routes.filter((x) => x.status !== "reachable")) {
-    findings.push({ id: `PRE-ROUTE-${r.route}`, severity: "blocking", detail: `${r.route} is ${r.status} (${r.evidence})` });
-  }
-  if (spec.auth && !auth.token) {
-    findings.push({ id: "PRE-AUTH", severity: "blocking", detail: `could not authenticate: ${auth.reason}` });
-  }
-  for (const note of cfg.degraded) findings.push({ id: "PRE-CONFIG", severity: "info", detail: note });
+  const started = Date.now();
+  const res = await ctx.provider.run({system: systemPromptFor(agent), prompt, tools});
+  const ms = Date.now() - started;
 
-  return {
-    app: { web: cfg.APP_BASE_URL, api: cfg.API_BASE_URL },
-    routes,
-    auth: { obtained: Boolean(auth.token), reason: auth.reason ?? null },
-    contracts_declared: spec.behaviours.filter((b) => b.contract).length,
-    behaviours_declared: spec.behaviours.length,
-    findings,
-  };
-}
+  ctx.ledger?.record(agent, res.usage, ms);
+  log.debug(`agent ${agent}`, {ms, calls: res.usage.calls, tools: res.toolCalls.length, stop: res.stopReason});
 
-/* ── 01 · Scope Analyst ───────────────────────────────────────────────────
-   Sorts every behaviour into exactly one bucket, with a reason, and rates its
-   own confidence. Low confidence forces the CP1 review rather than a bad plan. */
-function scope({ spec, artifacts }) {
-  const pre = artifacts["00-preflight"];
-  const reachable = pre.routes.every((r) => r.status === "reachable");
-  const in_scope = [];
-  const deferred = [];
-
-  for (const b of spec.behaviours) {
-    const verifiable = Boolean(b.contract) || (reachable && b.when.length > 0);
-    if (verifiable) {
-      in_scope.push({ id: b.id, behaviour: b.title, area: b.feature, layer: b.layer });
-    } else {
-      deferred.push({
-        id: b.id,
-        behaviour: b.title,
-        why: b.contract ? "its contract could not be reached" : "no contract, and the UI route it needs is not reachable",
-      });
-    }
-  }
-
-  // Confidence is computed, not asserted: what fraction of behaviours can actually be verified,
-  // reduced by anything pre-flight flagged as blocking.
-  const blocking = pre.findings.filter((f) => f.severity === "blocking").length;
-  const confidence = Math.max(0, +(pct(in_scope.length, spec.behaviours.length) - blocking * 0.15).toFixed(2));
-
-  return {
-    in_scope,
-    deferred,
-    out_scope: [],
-    confidence,
-    rationale:
-      `${in_scope.length} of ${spec.behaviours.length} behaviours are verifiable against this build` +
-      (blocking ? `; ${blocking} blocking pre-flight finding(s) reduce confidence` : ""),
-    findings: pre.findings.filter((f) => f.severity === "blocking"),
-  };
-}
-
-/* ── 02 · Test Architect ──────────────────────────────────────────────────
-   One testable objective per in-scope behaviour, routed to a track and typed. */
-function architecture({ spec, artifacts }) {
-  const inScope = new Set(artifacts["01-scope"].in_scope.map((x) => x.id));
-  const objectives = spec.behaviours
-    .filter((b) => inScope.has(b.id))
-    .map((b) => {
-      const t = explainType(`${b.title} ${b.when.join(" ")} ${b.then}`);
-      return {
-        id: b.id,
-        objective: b.then,
-        area: b.feature,
-        track: b.layer,
-        type: b.type ?? t.type,
-        type_reason: b.type ? "pinned by the spec" : t.why,
-      };
-    });
-
-  const byType = objectives.reduce((a, o) => ((a[o.type] = (a[o.type] ?? 0) + 1), a), {});
-  const risks = [];
-  if (!byType.negative) risks.push("no negative case in this scope — a suite of happy paths proves very little");
-  if (!byType.edge) risks.push("no boundary case in this scope");
-  if (objectives.every((o) => o.track === "UI")) risks.push("UI-only coverage — contract-level defects will not be visible");
-
-  return { objectives, split: byType, pilot: spec.area, risks };
-}
-
-/* ── 03 · Case Designer ───────────────────────────────────────────────────
-   Gherkin per objective, auto-tagged so any slice is pickable by tag. */
-function caseDesign({ spec, artifacts }) {
-  const objectives = new Map(artifacts["02-architecture"].objectives.map((o) => [o.id, o]));
-  const scenarios = [];
-  const body = [`Feature: ${spec.title}`, ""];
-
-  for (const b of spec.behaviours) {
-    const o = objectives.get(b.id);
-    if (!o) continue;
-    const lines = [`  Scenario: ${b.id} ${b.title}`];
-    if (b.given) lines.push(`    Given ${b.given}`);
-    b.when.forEach((w, i) => lines.push(`    ${i === 0 ? "When" : "And"} ${w}`));
-    lines.push(`    Then ${b.then}`);
-    body.push(...lines, "");
-    scenarios.push({ id: b.id, title: b.title, type: o.type, area: b.feature });
+  if (res.stopReason === "max_turns") {
+    throw new Error(`${agent} did not finish within its turn budget — it may be looping on a tool`);
   }
 
-  const gherkin = applyTags(body.join("\n"), spec.area);
-  return {
-    file: `tests/features/${spec.area}.feature`,
-    gherkin,
-    features: 1,
-    scenarios: scenarios.length,
-    cases: scenarios,
-    untagged: validateTags(gherkin),
+  const decision = extractJson(res.text);
+  // How the decision was reached travels with it, so a surprising artifact can
+  // be traced to the reasoning and the tool calls behind it.
+  decision._agent = {
+    name: agent,
+    model: ctx.provider.model,
+    usage: res.usage,
+    ms,
+    toolCalls: res.toolCalls.map((c) => ({tool: c.tool, args: c.args, ok: c.ok, ms: c.ms})),
   };
+  return decision;
 }
 
-/* ── 3b · Tracker Publisher ───────────────────────────────────────────────
-   Builds the payloads and STOPS. Dry-run unless a tracker is configured and a
-   human passes --send at the gate. */
-function publish({ spec, artifacts, cfg, send = false }) {
-  const cases = artifacts["03-case-design"].cases;
-  const writes_pending = cases.map((c) => ({
-    endpoint: `${cfg.TRACKER_BASE_URL ?? "${TRACKER_BASE_URL}"}/api/testcases`,
-    payload: {
-      summary: `${c.id} ${c.title}`,
-      labels: [`area:${c.area}`, `type:${c.type}`, "aqa-generated"],
-      expected: spec.behaviours.find((b) => b.id === c.id)?.then ?? null,
-    },
-  }));
-  return {
-    dry_run: !send,
-    sent: 0,
-    reason: send && !cfg.canPublish ? "--send was given but TRACKER_BASE_URL / TRACKER_TOKEN are not configured" : null,
-    testcases: writes_pending.length,
-    writes_pending,
-  };
+/* ── 00 · Pre-flight ─────────────────────────────────────────────────────────
+   AGENT decides what to look for and what the sources mean.
+   TOOLS do the looking. */
+async function preflight(ctx) {
+  return decide({
+    ctx,
+    agent: "scope-analyst",
+    task:
+      "Before anything is planned, establish two things. First, reconcile the written intent against every source you were given: where they disagree, SURFACE the disagreement rather than resolving it — a human decides that at CP1. Second, decide which routes and controls this feature needs, then use your tools to find out whether the running application actually has them. Report anything you could not verify, with the reason.",
+    input: {spec: ctx.spec, app: {web: ctx.cfg.APP_BASE_URL, api: ctx.cfg.API_BASE_URL}},
+    toolsets: ["probe", "ui"],
+    schema: `{
+  "app": {"web": "string", "api": "string"},
+  "sources": [{"source": "string", "says": "string", "agrees": true, "conflict": "string|null"}],
+  "routes": [{"route": "string", "status": "reachable|error|unreachable", "evidence": "string"}],
+  "elements": [{"looked_for": "string", "found": "true|false|ambiguous", "evidence": "string"}],
+  "findings": [{"id": "string", "severity": "blocking|info", "detail": "string"}],
+  "notes": "string"
+}`,
+  });
 }
 
-/* ── 04 · Test Generator ──────────────────────────────────────────────────
-   Emits the feature file and an executable contract suite. A behaviour with no
-   contract is emitted as a dated skip naming why — never a guessed selector. */
-function generate({ spec, artifacts }) {
-  const cases = artifacts["03-case-design"].cases;
-  const runnable = [];
-  const skipped = [];
-
-  for (const c of cases) {
-    const b = spec.behaviours.find((x) => x.id === c.id);
-    if (b?.contract) runnable.push({ id: b.id, method: b.contract.method, path: b.contract.path });
-    else skipped.push({ id: c.id, reason: "no contract declared; a UI step definition needs a verified selector", since: new Date().toISOString().slice(0, 10) });
-  }
-
-  return {
-    files: [artifacts["03-case-design"].file, `tests/contracts/${spec.area}.contract.json`],
-    step_defs: runnable.length,
-    selectors_verified: 0,
-    new_page_objects: 0,
-    runnable,
-    skipped,
-  };
+/* ── 01 · Scope Analyst ──────────────────────────────────────────────────────
+   Pure judgement: what does this requirement mean, what is in scope, what is
+   ambiguous, what evidence supports the reading. */
+async function scope(ctx) {
+  return decide({
+    ctx,
+    agent: "scope-analyst",
+    task:
+      "Decide what is worth testing. Read the requirement for what it actually means, not only what it literally says. Sort every candidate behaviour into exactly ONE bucket — in_scope, deferred, or out_scope — and give the evidence behind each placement. Name what is ambiguous rather than guessing at it. Emit a 0-1 confidence with a one-line rationale: low confidence is the right answer when the app cannot be verified, and it forces the CP1 review instead of a bad plan.",
+    input: {spec: ctx.spec, preflight: ctx.artifacts["00-preflight"]},
+    toolsets: ["probe", "artifacts"],
+    schema: `{
+  "interpretation": "string (what you understand this requirement to mean)",
+  "in_scope": [{"id": "string", "behaviour": "string", "area": "string", "layer": "UI|API", "evidence": "string"}],
+  "deferred": [{"id": "string", "behaviour": "string", "why": "string"}],
+  "out_scope": [{"id": "string", "behaviour": "string", "why": "string"}],
+  "ambiguities": [{"question": "string", "why_it_matters": "string"}],
+  "areas_affected": ["string"],
+  "confidence": 0.0,
+  "rationale": "string",
+  "findings": [{"id": "string", "blocking": true, "detail": "string"}]
+}`,
+  });
 }
 
-/* ── 05 · Targeted Run ────────────────────────────────────────────────────
-   Executes this cycle's contracts against the live app. Real requests, real
-   comparisons — this is where a contract-level defect actually surfaces. */
-async function targetedRun({ spec, artifacts, cfg, session }) {
-  const token = session?.token ?? null;
-  const inScope = new Set(artifacts["01-scope"].in_scope.map((x) => x.id));
-  const todo = spec.behaviours.filter((b) => inScope.has(b.id));
+/* ── 02 · Test Architect ─────────────────────────────────────────────── CP1 ─
+   What needs testing, at which layer, at what risk, in what order. */
+async function architecture(ctx) {
+  return decide({
+    ctx,
+    agent: "test-architect",
+    task:
+      "Turn the classified scope into a test plan. For each in-scope item: one clear testable objective, the layer that should carry it (API, UI, integration or performance) and why that layer rather than another, and a deliberate positive / negative / edge split. Prioritise by risk, and say what the priority is based on. Name the risks the plan does NOT cover — an honest gap is more useful than a confident omission.",
+    input: {scope: ctx.artifacts["01-scope"], preflight: ctx.artifacts["00-preflight"]},
+    toolsets: ["artifacts"],
+    schema: `{
+  "objectives": [{"id": "string", "objective": "string", "area": "string", "layer": "API|UI|integration|performance", "layer_reason": "string", "type": "happy|negative|edge|guard|lifecycle", "priority": "high|medium|low", "priority_reason": "string"}],
+  "split": {"happy": 0, "negative": 0, "edge": 0, "guard": 0, "lifecycle": 0},
+  "pilot": "string|null",
+  "risks": [{"risk": "string", "covered": false, "detail": "string"}]
+}`,
+  });
+}
 
-  // Bounded, not serial and not unbounded: serial makes a real suite unusably slow, unbounded
-  // turns the tool into a load test of the app it is measuring.
-  // A browser is optional. When it is absent, UI behaviours are skipped WITH that reason rather
-  // than silently dropped or reported as passing.
-  const needsUi = todo.some((b) => b.ui?.steps);
-  const driver = needsUi ? await loadDriver() : { available: false, reason: "no behaviour declares ui.steps" };
-  const browser = driver.available ? await driver.chromium.launch() : null;
-  if (needsUi && !driver.available) log.warn(`  ! UI behaviours will be skipped: ${driver.reason}`);
+/* ── 03 · Case Designer ──────────────────────────────────────────────── CP2 ─
+   Which concrete cases exist, their preconditions and expected outcomes.
+   The tag engine stamps them, so tagging stays deterministic. */
+async function caseDesign(ctx) {
+  return decide({
+    ctx,
+    agent: "case-designer",
+    task:
+      "Write the concrete test cases. Each objective becomes a stakeholder-readable Gherkin scenario with explicit preconditions and an observable expected outcome, 3-7 meaningful steps, prefixed with its key. Cover positive, negative and boundary cases where the objective warrants them, and prioritise by risk. Ground every step in what the application actually does. When the Gherkin is written, tag it with the tag_gherkin tool rather than by hand: the engine's precedence is fixed, so the same scenario always gets the same tag, which is what makes tag-based selection trustworthy.",
+    input: {architecture: ctx.artifacts["02-architecture"], area: ctx.spec.area, title: ctx.spec.title},
+    toolsets: ["tags", "artifacts", "probe"],
+    schema: `{
+  "file": "string",
+  "gherkin": "string (the full tagged feature file)",
+  "features": 1,
+  "scenarios": 0,
+  "cases": [{"id": "string", "title": "string", "type": "string", "area": "string", "priority": "high|medium|low", "preconditions": "string|null", "steps": ["string"], "expected": "string"}],
+  "untagged": [],
+  "open_questions": ["string"]
+}`,
+  });
+}
 
-  const results = await mapLimit(todo, cfg.CONCURRENCY, async (b) => {
-    if (b.ui?.steps) {
-      if (!browser) return { id: b.id, title: b.title, verdict: "skipped", reason: driver.reason, layer: "UI" };
-      const u = await runUiBehaviour(b, {
-        browser,
-        baseUrl: cfg.APP_BASE_URL,
-        timeoutMs: cfg.REQUEST_TIMEOUT_MS,
-        substitute: { run: session?.nonce ?? "run" },
-      });
-      log.debug(`ui ${b.id}`, { verdict: u.verdict });
-      return { id: b.id, title: b.title, verdict: u.verdict, layer: "UI", failed: u.failed?.length ? u.failed : null, steps: u.steps, dialogs: u.dialogs };
-    }
-    if (!b.contract) return { id: b.id, title: b.title, verdict: "skipped", reason: "no contract and no ui.steps to execute" };
-    const r = await probeBehaviour(b, {
-      apiBase: cfg.API_BASE_URL,
-      token,
-      timeoutMs: cfg.REQUEST_TIMEOUT_MS,
-      substitute: { run: session?.nonce ?? "run" },
-      retry: { attempts: cfg.RETRY_ATTEMPTS },
-    });
-    log.debug(`probe ${b.id}`, { verdict: r.verdict, status: r.response?.status ?? null });
-    return {
-      id: b.id,
-      title: b.title,
-      verdict: r.verdict,
-      reason: r.reason ?? null,
-      failed: r.failed ?? null,
-      request: r.request ?? null,
-      status: r.response?.status ?? null,
-      durationMs: r.response?.durationMs ?? null,
-      ...(r.retried ? { attempts: r.attempts, retried: true } : {}),
-      checks: r.checks,
-    };
+/* ── 3b · Tracker Publisher ──────────────────────────────────────────────────
+   AGENT decides which cases to publish and what each record says.
+   CODE builds the exact records: a model never shapes an outbound write. */
+async function publish(ctx) {
+  const decision = await decide({
+    ctx,
+    agent: "tracker-publisher",
+    task:
+      "Decide which of the approved cases should become tracker records, and what each record should say: summary, preconditions, steps and expected result. Do not construct HTTP calls — name the cases and their content, and the pipeline builds the exact records. Nothing is sent until a human says so.",
+    input: {cases: ctx.artifacts["03-case-design"]?.cases ?? [], tracker: {configured: ctx.cfg.canPublish}},
+    toolsets: ["artifacts"],
+    schema: `{
+  "selected": [{"id": "string", "title": "string", "area": "string", "type": "string", "preconditions": "string|null", "steps": ["string"], "expected": "string"}],
+  "withheld": [{"id": "string", "why": "string"}],
+  "reasoning": "string"
+}`,
   });
 
-  await browser?.close().catch(() => {});
-
-  const count = (v) => results.filter((r) => r.verdict === v).length;
+  const writes = buildTrackerWrites(decision.selected, ctx.cfg);
   return {
-    ran: results.length,
-    ui_ran: results.filter((r) => r.layer === "UI" && r.verdict !== "skipped").length,
-    passed: count("pass"),
-    failed: count("fail"),
-    skipped: count("skipped"),
-    retried: results.filter((r) => r.retried).length,
-    results,
+    ...decision,
+    dry_run: !ctx.send,
+    sent: 0, // nothing leaves without a human at the gate
+    testcases: writes.length,
+    writes_pending: writes,
+    reason: ctx.send && !ctx.cfg.canPublish ? "--send was given but no tracker is configured" : null,
   };
 }
 
-/* ── 06 · Triage / Self-Heal ──────────────────────────────────────────────
-   Classifies each failure. The expensive mistake in QA is filing a test's own
-   defect against the product, so classification comes before any bug. */
-function selfHeal({ artifacts }) {
-  const failures = artifacts["05-targeted-run"].results.filter((r) => r.verdict === "fail");
-  const triaged = failures.map((f) => {
-    const why = (f.failed ?? []).join(" ") + " " + (f.reason ?? "");
-    // A transport failure is an environment problem, not a product bug.
-    if (/request failed|timed out|ECONNREFUSED|ENOTFOUND/i.test(why)) {
-      return { id: f.id, classification: "environment", action: "reported, no bug filed", detail: f.reason };
-    }
-    // A 5xx where the spec expected a 4xx is the app mishandling a client error.
-    // "expected 400, got 500" and "expected 400 or 404, got 500" are the same defect class:
-    // the app answers a client mistake with a server error.
-    if (/expected (?:4\d\d(?:\s+or\s+4\d\d)*), got 5\d\d/.test(why)) {
-      return { id: f.id, classification: "product_bug", severity: "high", action: "bug staged (dry-run)",
-               detail: "the app returns a server error for what the spec declares a client error" };
-    }
-    if (/status: expected/.test(why)) {
-      return { id: f.id, classification: "product_bug", severity: "medium", action: "bug staged (dry-run)", detail: (f.failed ?? [])[0] };
-    }
-    return { id: f.id, classification: "needs_human", action: "escalated to CP4", detail: (f.failed ?? [])[0] ?? f.reason };
+/* ── 04 · Test Generator ─────────────────────────────────────────────── CP3 ─
+   How each case maps to executable behaviour, which selectors and endpoints to
+   bind to, and what cannot safely be automated. */
+async function generate(ctx) {
+  return decide({
+    ctx,
+    agent: "test-generator",
+    task:
+      "Make the cases runnable. For each one decide how it maps to executable behaviour: an API contract (method, path, body, expected status and fields) or browser steps with stated selectors. VERIFY EVERY SELECTOR AND ENDPOINT against the running application before binding to it — that is what your tools are for. Where something is absent or cannot be addressed unambiguously, emit a dated skip naming what is missing; never guess a selector. Say plainly when a case cannot safely be automated.",
+    input: {cases: ctx.artifacts["03-case-design"], preflight: ctx.artifacts["00-preflight"]},
+    toolsets: ["probe", "ui", "files", "artifacts"],
+    schema: `{
+  "files": ["string"],
+  "step_defs": 0,
+  "selectors_verified": 0,
+  "new_page_objects": 0,
+  "runnable": [{"id": "string", "title": "string", "area": "string", "layer": "API|UI", "contract": {}, "ui": {"steps": []}, "verified": "string"}],
+  "skipped": [{"id": "string", "reason": "string", "since": "YYYY-MM-DD"}]
+}`,
+  });
+}
+
+/* ── 05 · Targeted Run ───────────────────────────────────────────────── CP4 ─
+   NO AGENT VERDICT. The Generator already decided what is runnable; the runner
+   executes it and writes the verdict from a real request or a real browser
+   step. A model is never the thing that says a test passed. */
+async function targetedRun(ctx) {
+  const gen = ctx.artifacts["04-generate"] ?? {};
+  const cases = gen.runnable ?? [];
+  const result = await executeCases(cases, ctx);
+  return {
+    ...result,
+    selected_by: "04-generate",
+    not_automated: gen.skipped ?? [],
+    note: "verdicts produced by the runner from real execution, not by a model",
+  };
+}
+
+/* ── 06 · Triage / Self-Heal ─────────────────────────────────────────────────
+   AGENT diagnoses and proposes the permitted action.
+   CODE re-runs the repair and decides whether it actually worked, so the agent
+   cannot declare its own fix successful. */
+async function selfHeal(ctx) {
+  const run = ctx.artifacts["05-targeted-run"] ?? {};
+  const failures = (run.results ?? []).filter((r) => r.verdict === "fail");
+
+  if (failures.length === 0) {
+    return {
+      failures: 0, healed: 0, bugs_staged: 0, known_flaky_skipped: 0, needs_human: 0,
+      cap_cycles: 3, triaged: [], note: "nothing failed, so there was nothing to triage",
+    };
+  }
+
+  const decision = await decide({
+    ctx,
+    agent: "triage-self-healer",
+    task:
+      "Diagnose every failure. For each: is it a known-flaky intermittent, a test defect, a product bug, or does it need a human? Give the evidence behind your conclusion. Where it is a TEST defect and can be repaired safely, state the exact repaired case. You may NOT weaken an assertion to reach green: if the only way to pass is to assert less, that is a product bug or a human decision, not a heal. Where it is a product bug, stage it with evidence and do not touch the test.",
+    input: {failures, generated: ctx.artifacts["04-generate"], cases: ctx.artifacts["03-case-design"]?.cases ?? []},
+    toolsets: ["probe", "ui", "artifacts"],
+    schema: `{
+  "triaged": [{
+    "id": "string",
+    "classification": "known_flaky|test_defect|product_bug|needs_human",
+    "severity": "high|medium|low|info",
+    "evidence": "string",
+    "detail": "string",
+    "repaired_case": "null, or the full corrected case object carrying a contract or ui.steps",
+    "weakened_assertion": false
+  }]
+}`,
+  });
+
+  // Every proposed repair is re-run. The agent proposes; execution decides.
+  // "healed" means a real re-run passed, not that an agent said so.
+  const repairs = (decision.triaged ?? []).filter((t) => t.classification === "test_defect" && t.repaired_case);
+  const verify = repairs.length
+    ? await executeCases(repairs.map((t) => ({...t.repaired_case, id: t.id})), ctx)
+    : {results: []};
+  const byId = new Map((verify.results ?? []).map((r) => [r.id, r]));
+
+  const triaged = (decision.triaged ?? []).map((t) => {
+    const check = byId.get(t.id);
+    return check
+      ? {...t, heal_verified: check.verdict === "pass", heal_result: check.verdict, heal_evidence: check.failed ?? null}
+      : t;
   });
 
   return {
     failures: failures.length,
-    healed: 0, // a contract failure is never "healed" by editing the assertion
+    healed: triaged.filter((t) => t.heal_verified).length,
+    proposed_repairs_that_did_not_pass: triaged.filter((t) => t.heal_result && t.heal_result !== "pass").length,
     bugs_staged: triaged.filter((t) => t.classification === "product_bug").length,
-    known_flaky_skipped: triaged.filter((t) => t.classification === "environment").length,
+    known_flaky_skipped: triaged.filter((t) => t.classification === "known_flaky").length,
+    needs_human: triaged.filter((t) => t.classification === "needs_human").length,
     cap_cycles: 3,
     triaged,
+    _agent: decision._agent,
+    note: "a repair counts as healed only when the runner re-ran it and it passed",
   };
 }
 
-/* ── 07 · Regression ──────────────────────────────────────────────────────
-   Re-runs every contract, to prove this cycle did not disturb anything else. */
-async function regression({ spec, cfg, session }) {
-  const token = session?.token ?? null;
-  const todo = spec.behaviours.filter((x) => x.contract);
-  const results = await mapLimit(todo, cfg.CONCURRENCY, async (b) => {
-    const r = await probeBehaviour(b, {
-      apiBase: cfg.API_BASE_URL,
-      token,
-      timeoutMs: cfg.REQUEST_TIMEOUT_MS,
-      substitute: { run: `${session?.nonce ?? "run"}r` },
-      retry: { attempts: cfg.RETRY_ATTEMPTS },
-    });
-    return { id: b.id, verdict: r.verdict };
-  });
-  const count = (v) => results.filter((r) => r.verdict === v).length;
-  return { total: results.length, passed: count("pass"), failed: count("fail"), skipped: count("skipped"), results };
-}
+/* ── 07 · Regression ─────────────────────────────────────────────────────────
+   AGENT decides what regression coverage this cycle needs.
+   CODE runs it. The runner never invents QA strategy. */
+async function regression(ctx) {
+  const cases = ctx.artifacts["04-generate"]?.runnable ?? [];
 
-/* ── 08 · Reviewer ────────────────────────────────────────────────────────
-   Reads the generated work against conventions.md. Comments; never merges. */
-function review({ spec, artifacts }) {
-  const cases = artifacts["03-case-design"];
-  const gen = artifacts["04-generate"];
-  const arch = artifacts["02-architecture"];
-  const findings = [];
-
-  const untagged = cases.untagged;
-  findings.push({
-    rule: "every scenario carries @area and @type",
-    verdict: untagged.length ? "fail" : "pass",
-    blocking: untagged.length > 0,
-    detail: untagged.length ? untagged.map((u) => u.scenario).join("; ") : "all tagged",
-  });
-
-  const keyless = cases.cases.filter((c) => !/^[A-Z]+-\d+/.test(c.id));
-  findings.push({
-    rule: "every scenario carries its tracker key",
-    verdict: keyless.length ? "fail" : "pass",
-    blocking: keyless.length > 0,
-    detail: keyless.length ? keyless.map((c) => c.id).join(", ") : "all keyed",
-  });
-
-  findings.push({
-    rule: "no bare 2xx assertion — the inner result is asserted",
-    verdict: spec.behaviours.filter((b) => b.contract).every((b) => b.contract.expect.hasFields || b.contract.expect.bodyMatches || String(b.contract.expect.status).startsWith("4") || String(b.contract.expect.status).startsWith("5")) ? "pass" : "fail",
-    blocking: false,
-    detail: "a 2xx alone proves the request arrived, not that it did the right thing",
-  });
-
-  findings.push({
-    rule: "shared page objects untouched (page-object freeze)",
-    verdict: gen.new_page_objects === 0 ? "pass" : "fail",
-    blocking: gen.new_page_objects > 0,
-    detail: `${gen.new_page_objects} new page objects`,
-  });
-
-  for (const risk of arch.risks) findings.push({ rule: "architecture risk", verdict: "warn", blocking: false, detail: risk });
-
-  return { findings, blocking: findings.filter((f) => f.blocking).length, passed: findings.filter((f) => f.verdict === "pass").length };
-}
-
-/* ── 09 · KB Curator ──────────────────────────────────────────────────────
-   Writes the Feature Registry entry: what is covered, and when it was last
-   verified against the running app. */
-function finalise({ spec, artifacts }) {
-  const run = artifacts["05-targeted-run"];
-  const verified = run.failed === 0 && run.passed > 0 ? new Date().toISOString().slice(0, 10) : null;
-  return {
-    file: `kb/${spec.area}.yaml`,
-    entry: {
-      feature: spec.area,
-      intent: { spec: [spec.id] },
-      truth: {
-        ui_routes: spec.routes,
-        api: spec.behaviours.filter((b) => b.contract).map((b) => `${b.contract.method} ${b.contract.path}`),
-      },
-      ours: { feature: artifacts["03-case-design"].file },
-      verified_against_live: verified,
-      coverage: run.passed > 0 ? "covered" : "not-verified",
+  const decision = await decide({
+    ctx,
+    agent: "reviewer", // independent of whoever made the changes, deliberately
+    task:
+      "Decide what regression coverage this cycle needs, and say why. Given what changed and which areas it touched, select the cases to re-run to show that nothing already covered has broken. Selecting everything is a legitimate answer when the change is broad; so is a narrower selection when you can justify it. You are choosing scope only — the runner executes and writes the verdicts.",
+    input: {
+      available: cases.map((c) => ({id: c.id, title: c.title, area: c.area ?? null, layer: c.layer})),
+      changed: ctx.artifacts["01-scope"]?.areas_affected ?? [],
+      healed: ctx.artifacts["06-self-heal"]?.triaged ?? [],
     },
-    note: verified ? null : "not stamped — the targeted run did not come back clean, so the registry must not claim it did",
+    toolsets: ["artifacts"],
+    schema: `{"select": ["case id"], "strategy": "full|targeted", "reasoning": "string"}`,
+  });
+
+  const chosen = new Set(decision.select ?? []);
+  const selected = chosen.size ? cases.filter((c) => chosen.has(c.id)) : cases;
+  const result = await executeCases(selected, ctx);
+
+  return {
+    ...result,
+    total: result.ran,
+    strategy: decision.strategy ?? "full",
+    reasoning: decision.reasoning ?? null,
+    selected_by: "reviewer",
+    _agent: decision._agent,
   };
 }
 
+/* ── 08 · Reviewer ───────────────────────────────────────────────────── CP5 ─
+   Genuine independence. It sees the requirement, the cases, the implementation
+   and the results, and may DISAGREE with earlier agents. Given no file tool: it
+   reports, it does not repair. */
+async function review(ctx) {
+  return decide({
+    ctx,
+    agent: "reviewer",
+    task:
+      "Review this cycle as a whole and answer one question honestly: does this actually prove the feature works? Examine the requirement, the scope decisions, the cases, the generated implementation, the run results and the triage. You may disagree with earlier agents, and saying so is the reason you exist separately from them. Then review the generated tests against the conventions: every scenario keyed and tagged, no bare 2xx assertion, page objects untouched, selectors verified. Report findings; do NOT fix them — a finding silently repaired teaches nobody, and Triage owns fixes. An untagged scenario is blocking.",
+    input: {
+      requirement: ctx.spec,
+      scope: ctx.artifacts["01-scope"],
+      architecture: ctx.artifacts["02-architecture"],
+      cases: ctx.artifacts["03-case-design"],
+      generated: ctx.artifacts["04-generate"],
+      run: ctx.artifacts["05-targeted-run"],
+      triage: ctx.artifacts["06-self-heal"],
+      regression: ctx.artifacts["07-regression"],
+    },
+    toolsets: ["artifacts", "tags", "probe"], // no files: it cannot fix what it finds
+    schema: `{
+  "proves_the_feature_works": true,
+  "verdict_reasoning": "string",
+  "disagreements": [{"with": "phase id", "what": "string", "why": "string"}],
+  "findings": [{"rule": "string", "verdict": "pass|fail|warn", "blocking": false, "detail": "string"}],
+  "coverage_gaps": ["string"],
+  "blocking": 0,
+  "passed": 0
+}`,
+  });
+}
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   ASYNC TRACKS · agents 9-12
-   These report and never block a merge. Each one either produces a real result
-   or says, with its reason, that it could not run — never a green it did not
-   earn. They are separate from the gated pipeline by design: performance is a
-   measurement, design parity is a design-team concern, and AI quality is a
-   score against a baseline. None of those should hold up a merge.
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ── 09 · KB Curator ─────────────────────────────────────────────────────────
+   AGENT decides what knowledge is worth keeping. CODE stores it. */
+async function finalise(ctx) {
+  const decision = await decide({
+    ctx,
+    agent: "kb-curator",
+    task:
+      "Decide what this cycle taught that is worth keeping. Write the Feature Registry entry: where the feature is specified, what is now true of the live app, which tests cover it, what risks were discovered, and what should become reusable QA knowledge. Stamp verified_against_live ONLY if the targeted run came back clean; otherwise leave it null and say why. A registry that claims verification it did not earn is worse than no registry.",
+    input: {
+      spec: ctx.spec,
+      run: ctx.artifacts["05-targeted-run"],
+      regression: ctx.artifacts["07-regression"],
+      review: ctx.artifacts["08-review"],
+      cases: ctx.artifacts["03-case-design"],
+      preflight: ctx.artifacts["00-preflight"],
+    },
+    toolsets: ["artifacts"],
+    schema: `{
+  "file": "string",
+  "entry": {"feature": "string", "intent": {}, "truth": {}, "ours": {}, "verified_against_live": "YYYY-MM-DD|null", "owner": "string", "coverage": "string"},
+  "risks_discovered": ["string"],
+  "reusable_knowledge": ["string"],
+  "note": "string|null"
+}`,
+  }).then(async (d) => {
+    if (d.file && d.entry) {
+      const body = `# Feature Registry entry, written by the KB Curator.\n${JSON.stringify(d.entry, null, 2)}\n`;
+      await writeArtifactFile(ctx.repoRoot, String(d.file).replace(/\.ya?ml$/, ".json"), body).catch(() => {});
+    }
+    return d;
+  });
+  return decision;
+}
 
-/* ── 09 · Performance & Logs ──────────────────────────────────────────────
-   Measures the steps this spec touches against budgets DECLARED IN THE SPEC.
-   A budget written before the run makes a breach a fact; a number judged after
-   the fact is an opinion. */
-async function performance({ spec, cfg, session }) {
-  const budgets = spec.budgets ?? {};
-  const measurable = spec.behaviours.filter((b) => b.contract && budgets[b.id] != null);
+/* ═══ async tracks · 9-12 · report, never gate ═══════════════════════════════ */
 
-  if (measurable.length === 0) {
+/* AGENT interprets the timings. CODE does the timing. */
+async function performance(ctx) {
+  const cases = ctx.artifacts["04-generate"]?.runnable ?? [];
+  const budgets = ctx.spec.budgets ?? {};
+  if (Object.keys(budgets).length === 0) {
     return {
-      status: "not_configured",
-      gates: false,
-      reason: "no budgets declared in the spec — there is nothing to measure against",
-      hint: 'add "budgets": { "<behaviour-id>": <p95 ms> } to the spec',
-      steps: [],
-      findings: [],
+      status: "not_configured", gates: false,
+      reason: "no budgets are declared in the spec, so there is nothing to measure against",
+      hint: 'add "budgets": { "<case-id>": <p95 ms> }', steps: [], findings: [],
     };
   }
-
-  const iterations = cfg.PERF_ITERATIONS;
-  const token = session?.token ?? null;
-  const steps = [];
-
-  for (const b of measurable) {
-    const samples = [];
-    let errors = 0;
-    for (let i = 0; i < iterations; i++) {
-      const r = await probeContract(b.contract, {
-        apiBase: cfg.API_BASE_URL,
-        token,
-        timeoutMs: cfg.REQUEST_TIMEOUT_MS,
-        substitute: { run: `${session?.nonce ?? "run"}p${i}` },
-        retry: { attempts: 1 }, // a retry would distort the very timing being measured
-      });
-      if (r.response?.durationMs != null) samples.push(r.response.durationMs);
-      else errors++;
-    }
-    if (samples.length === 0) {
-      steps.push({ step: b.id, n: 0, error: "every sample failed", budget: budgets[b.id], breach: false, measured: false });
-      continue;
-    }
-    const sorted = samples.slice().sort((x, y) => x - y);
-    const at = (q) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
-    const p95 = +at(0.95).toFixed(1);
-    steps.push({
-      step: b.id,
-      n: samples.length,
-      errors,
-      p50: +at(0.5).toFixed(1),
-      p95,
-      max: +sorted.at(-1).toFixed(1),
-      budget: budgets[b.id],
-      breach: p95 > budgets[b.id],
-      measured: true,
-    });
-  }
-
-  const breaches = steps.filter((s) => s.breach);
-  return {
-    status: "ran",
-    gates: false,
-    iterations,
-    steps,
-    findings: breaches.map((s) => ({
-      id: `PERF-${s.step}`,
-      severity: "medium",
-      evidence: `p95 ${s.p95}ms over the declared budget of ${s.budget}ms across ${s.n} samples`,
-    })),
-    note: "report-only — this track never gates a merge, and never files known non-determinism as a bug",
-  };
+  const steps = await measure(cases, budgets, ctx);
+  const decision = await decide({
+    ctx,
+    agent: "performance-analyst",
+    task:
+      "Here are measured timings against budgets declared before the run. Decide what they mean: where the time goes, whether anything is a real breach worth raising, and what is ordinary variance. Raise a finding ONLY on a clear breach of a declared budget, with the evidence. Never file known non-determinism as a bug. You never gate a merge.",
+    input: {steps, iterations: ctx.cfg.PERF_ITERATIONS},
+    toolsets: ["artifacts"],
+    schema: `{"summary": "string", "findings": [{"id": "string", "severity": "string", "evidence": "string"}], "not_a_bug": ["string"]}`,
+  });
+  return {status: "ran", gates: false, iterations: ctx.cfg.PERF_ITERATIONS, steps, ...decision};
 }
 
-/* ── 10 · Design Parity ───────────────────────────────────────────────────
-   Compares a design prototype against the built app. Without a prototype
-   there is nothing to compare, and it says so rather than passing. */
-async function designParity({ spec, cfg }) {
-  const proto = spec.prototype ?? cfg.PROTOTYPE_BASE_URL ?? null;
+/* AGENT decides which deviations are meaningful. TOOLS drive both surfaces. */
+async function designParity(ctx) {
+  const proto = ctx.spec.prototype ?? ctx.cfg.PROTOTYPE_BASE_URL ?? null;
   if (!proto) {
     return {
-      status: "not_configured",
-      gates: false,
-      reason: "no prototype source connected, so there is nothing to compare the built app against",
+      status: "not_configured", gates: false,
+      reason: "no prototype source is connected, so there is nothing to compare the built app against",
       hint: 'set PROTOTYPE_BASE_URL, or add "prototype" to the spec',
-      compares: ["visual/layout", "flow", "copy", "states (empty, error, loading)"],
-      raises_against: "the design team — never product bugs, and never blocking",
     };
   }
-  // With a prototype we can at least compare route reachability and shape. Anything visual needs
-  // a browser, which the UI track owns; this reports what it could actually check.
-  const [protoRoutes, liveRoutes] = await Promise.all([
-    probeRoutes(proto, spec.routes, { timeoutMs: cfg.REQUEST_TIMEOUT_MS }),
-    probeRoutes(cfg.APP_BASE_URL, spec.routes, { timeoutMs: cfg.REQUEST_TIMEOUT_MS }),
-  ]);
-  const diffs = spec.routes
-    .map((route, i) => ({ route, prototype: protoRoutes[i].status, live: liveRoutes[i].status }))
-    .filter((d) => d.prototype !== d.live);
-
-  return {
-    status: "ran",
-    gates: false,
-    prototype: proto,
-    checked: spec.routes.length,
-    diffs,
-    note: "route-level parity only; visual comparison needs a browser. A human triages each diff as regression or deliberate evolution.",
-  };
+  return decide({
+    ctx,
+    agent: "design-parity-analyst",
+    task:
+      "Compare the prototype against the built application across visual/layout, flow, copy and states. Decide which deviations are MEANINGFUL — not every difference is a defect, and a human triages regression versus deliberate evolution. Raise tickets for the DESIGN TEAM, never product bugs, and never block.",
+    input: {prototype: proto, app: ctx.cfg.APP_BASE_URL, routes: ctx.spec.routes},
+    toolsets: ["ui", "probe"],
+    schema: `{"status": "ran", "gates": false, "checked": 0, "diffs": [{"route": "string", "axis": "visual|flow|copy|state", "detail": "string", "meaningful": true}], "note": "string"}`,
+  });
 }
 
-/* ── 11 · AI Eval Analyst ─────────────────────────────────────────────────
-   Scores an assistant against a human-approved answer key. Quality is a score
-   against a baseline, never a pass/fail, and never a merge gate. */
-async function aiEval({ spec, cfg }) {
-  const golden = spec.golden ?? null;
-  if (!golden || !Array.isArray(golden.cases) || golden.cases.length === 0) {
+/* AGENT judges answer quality. TOOLS ask and fetch the traces. */
+async function aiEval(ctx) {
+  const golden = ctx.spec.golden ?? null;
+  if (!golden?.cases?.length) {
     return {
-      status: "not_applicable",
-      gates: false,
+      status: "not_applicable", gates: false,
       reason: "this spec declares no assistant and no golden dataset, so there is nothing to score",
-      hint: 'add "golden": { "endpoint": "/v1/ask", "cases": [{ "ask": "...", "expectTools": [...] }] }',
-      scores_on: ["correctness", "faithfulness", "coherence", "relevance"],
-      deterministic_checks: ["expected tools present", "no forbidden tools", "no errored spans", "latency within budget"],
+      hint: 'add "golden": { "endpoint": "...", "cases": [...] }',
+    };
+  }
+  return decide({
+    ctx,
+    agent: "eval-analyst",
+    task:
+      "Score the assistant against the golden dataset. For each case: ask it, fetch the trace, then score on the judged axes (correctness, faithfulness, coherence, relevance) and the deterministic checks (expected tools present, no forbidden tools, no errored spans, latency within budget). Quality is a score against a baseline, never a pass/fail. A low score is surfaced, never auto-filed as a product bug, and you never gate a merge.",
+    input: {golden, api: ctx.cfg.API_BASE_URL},
+    toolsets: ["probe", "artifacts"],
+    schema: `{"status": "ran", "gates": false, "cases": 0, "results": [{"ask": "string", "scores": {}, "deterministic": {}, "notes": "string"}], "regressions": ["string"], "summary": "string"}`,
+  });
+}
+
+/* AGENT decides which anchors matter and what it cannot check.
+   CODE re-verifies them. */
+async function drift(ctx) {
+  const entry = ctx.artifacts["09-finalise"]?.entry ?? null;
+  if (!entry) {
+    return {
+      status: "not_configured", gates: false,
+      reason: "no Feature Registry entry exists for this feature yet — nothing recorded means nothing to re-check",
+      checks: [],
     };
   }
 
-  const token = null; // golden probes declare their own auth needs
-  const results = [];
-  for (const c of golden.cases) {
-    const r = await probeContract(
-      { method: "POST", path: golden.endpoint, auth: c.auth ?? false, body: { query: c.ask }, expect: { status: 200 } },
-      { apiBase: cfg.API_BASE_URL, token, timeoutMs: cfg.REQUEST_TIMEOUT_MS, retry: { attempts: 1 } },
-    );
-    // Deterministic checks only. A judge model would put a model back in the execution path, and
-    // the whole point of this runtime is that there is not one; scoring by judge is a separate,
-    // opt-in step that reads this artifact.
-    const answered = r.verdict === "pass";
-    const tools = r.response?.body?.tools ?? [];
-    const forbidden = (c.forbidTools ?? []).filter((t) => tools.includes(t));
-    const missing = (c.expectTools ?? []).filter((t) => !tools.includes(t));
-    results.push({
-      ask: c.ask,
-      answered,
-      latencyMs: r.response?.durationMs ?? null,
-      withinBudget: c.budgetMs == null ? null : (r.response?.durationMs ?? Infinity) <= c.budgetMs,
-      missingTools: missing,
-      forbiddenToolsUsed: forbidden,
-      deterministic: answered && missing.length === 0 && forbidden.length === 0,
-    });
-  }
+  const pick = await decide({
+    ctx,
+    agent: "drift-detector",
+    task:
+      "Decide which anchors from this registry entry must be re-verified against the live application, and say what you would NOT be able to check and why. Choose the anchors; the pipeline performs the checks and reports what happened.",
+    input: {entry},
+    toolsets: ["artifacts"],
+    schema: `{"routes": ["string"], "contracts": [{"id": "string", "method": "string", "path": "string", "expect": {"status": 200}}], "unverifiable": [{"anchor": "string", "reason": "string"}]}`,
+  });
 
-  return {
-    status: "ran",
-    gates: false,
-    cases: results.length,
-    deterministic_pass: results.filter((r) => r.deterministic).length,
-    results,
-    note: "deterministic checks only — a judged quality score is an opt-in step over this artifact, kept out of the runtime so a run stays reproducible",
-  };
-}
-
-/* ── 12 · Drift Detector ──────────────────────────────────────────────────
-   Re-verifies the Feature Registry against the live app. What it cannot check,
-   it reports as unchecked WITH the reason, rather than stamping fresh. */
-async function drift({ spec, cfg, session, artifacts }) {
-  const kb = artifacts["09-finalise"]?.entry;
-  if (!kb) {
-    return { status: "not_configured", gates: false, reason: "no Feature Registry entry for this feature yet — nothing recorded means nothing to re-check", checks: [] };
-  }
-
-  const token = session?.token ?? null;
-  const checks = [];
-
-  for (const r of await probeRoutes(cfg.APP_BASE_URL, kb.truth.ui_routes ?? [], { timeoutMs: cfg.REQUEST_TIMEOUT_MS })) {
-    checks.push({ anchor: `ui_route ${r.route}`, status: r.status === "reachable" ? "verified" : "drifted", evidence: r.evidence });
-  }
-
-  for (const b of spec.behaviours.filter((x) => x.contract)) {
-    const r = await probeContract(b.contract, {
-      apiBase: cfg.API_BASE_URL,
-      token,
-      timeoutMs: cfg.REQUEST_TIMEOUT_MS,
-      substitute: { run: `${session?.nonce ?? "run"}d` },
-      retry: { attempts: cfg.RETRY_ATTEMPTS },
-    });
-    checks.push({
-      anchor: `${b.contract.method} ${b.contract.path}`,
-      // Drift asks "does reality still match what we recorded", not "is the app correct". A
-      // contract that still behaves as recorded has not drifted, even when what it records is a
-      // known defect — that is triage's business, not this track's.
-      status: r.verdict === "skipped" ? "not-checked" : "verified",
-      evidence: r.verdict === "skipped" ? r.reason : `HTTP ${r.response?.status}`,
-    });
-  }
-
+  const checks = await verifyAnchors(pick, ctx);
   const drifted = checks.filter((c) => c.status === "drifted");
   const unchecked = checks.filter((c) => c.status === "not-checked");
+
   return {
-    status: "ran",
-    gates: false,
+    status: "ran", gates: false,
     checked: checks.length,
     verified: checks.filter((c) => c.status === "verified").length,
     drifted: drifted.length,
     not_checked: unchecked.length,
     checks,
-    flags: drifted.map((c) => ({ anchor: c.anchor, evidence: c.evidence, action: "human triage: product bug, or stale registry?" })),
+    flags: drifted.map((c) => ({anchor: c.anchor, evidence: c.evidence, action: "human triage: product bug, or stale registry?"})),
     stamped: drifted.length === 0 && unchecked.length === 0,
-    note: unchecked.length ? "stamped partial — what could not be checked is listed with its reason rather than assumed fresh" : null,
+    note: unchecked.length ? "stamped partial — what could not be checked is listed with its reason, not assumed fresh" : null,
+    _agent: pick._agent,
   };
 }
 
-/** The pipeline, in order. `gate` is the checkpoint that must be approved AFTER the phase runs. */
+/** The gated pipeline, in order. `gate` must be approved AFTER the phase runs. */
 export const PHASES = [
-  { id: "00-preflight", agent: "pre-flight", gate: null, run: preflight },
-  { id: "01-scope", agent: "scope-analyst", gate: null, run: scope },
-  { id: "02-architecture", agent: "test-architect", gate: "CP1", run: architecture },
-  { id: "03-case-design", agent: "case-designer", gate: "CP2", run: caseDesign },
-  { id: "3b-publish", agent: "tracker-publisher", gate: null, run: publish },
-  { id: "04-generate", agent: "test-generator", gate: "CP3", run: generate },
-  { id: "05-targeted-run", agent: "targeted-run", gate: "CP4", run: targetedRun },
-  { id: "06-self-heal", agent: "triage-self-healer", gate: null, run: selfHeal },
-  { id: "07-regression", agent: "regression", gate: null, run: regression },
-  { id: "08-review", agent: "reviewer", gate: "CP5", run: review },
-  { id: "09-finalise", agent: "kb-curator", gate: null, run: finalise },
+  {id: "00-preflight", agent: "pre-flight", gate: null, kind: "hybrid", run: preflight},
+  {id: "01-scope", agent: "scope-analyst", n: 1, gate: null, kind: "agent", run: scope},
+  {id: "02-architecture", agent: "test-architect", n: 2, gate: "CP1", kind: "agent", run: architecture},
+  {id: "03-case-design", agent: "case-designer", n: 3, gate: "CP2", kind: "agent", run: caseDesign},
+  {id: "3b-publish", agent: "tracker-publisher", n: 4, gate: null, kind: "hybrid", run: publish},
+  {id: "04-generate", agent: "test-generator", n: 5, gate: "CP3", kind: "agent", run: generate},
+  {id: "05-targeted-run", agent: "targeted-run", gate: "CP4", kind: "deterministic", run: targetedRun},
+  {id: "06-self-heal", agent: "triage-self-healer", n: 6, gate: null, kind: "hybrid", run: selfHeal},
+  {id: "07-regression", agent: "regression", gate: null, kind: "hybrid", run: regression},
+  {id: "08-review", agent: "reviewer", n: 7, gate: "CP5", kind: "agent", run: review},
+  {id: "09-finalise", agent: "kb-curator", n: 8, gate: null, kind: "hybrid", run: finalise},
 ];
 
 /** The async tracks. They run after the pipeline and never gate it. */
 export const ASYNC_TRACKS = [
-  { id: "a09-performance", agent: "performance-analyst", n: 9, run: performance },
-  { id: "a10-design-parity", agent: "design-parity-analyst", n: 10, run: designParity },
-  { id: "a11-ai-eval", agent: "eval-analyst", n: 11, run: aiEval },
-  { id: "a12-drift", agent: "drift-detector", n: 12, run: drift },
+  {id: "a09-performance", agent: "performance-analyst", n: 9, kind: "hybrid", run: performance},
+  {id: "a10-design-parity", agent: "design-parity-analyst", n: 10, kind: "agent", run: designParity},
+  {id: "a11-ai-eval", agent: "eval-analyst", n: 11, kind: "agent", run: aiEval},
+  {id: "a12-drift", agent: "drift-detector", n: 12, kind: "hybrid", run: drift},
 ];
 
 export const ALL_PHASES = [...PHASES, ...ASYNC_TRACKS];

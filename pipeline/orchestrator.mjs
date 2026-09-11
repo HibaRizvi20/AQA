@@ -7,8 +7,13 @@
 //   node pipeline/orchestrator.mjs approve <runId> CP1
 //   node pipeline/orchestrator.mjs reject  <runId> CP1 --reason "scope is too wide"
 //
-// It calls no model. Given the same spec and the same build, it produces the same artifacts, so
-// a difference between two runs is a difference in the app.
+// The agents are the execution engine. This file is the control layer around them: it decides
+// which agent runs, holds the state, stops at the human gates, retries transport failures,
+// redacts secrets, versions the artifacts, and accounts for what every agent cost.
+//
+// --provider and --model select the intelligence. That seam is what lets the single-agent
+// baseline and the twelve-agent pipeline be compared on the same model, and the same
+// architecture be compared across models.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -16,6 +21,8 @@ import { PHASES, ASYNC_TRACKS } from "./phases.mjs";
 import { log } from "./lib/log.mjs";
 import { loadConfig, ConfigError } from "./lib/config.mjs";
 import { loadSpec, SpecError } from "./lib/spec.mjs";
+import { createProvider, newLedger, ProviderError } from "./lib/provider.mjs";
+import "./lib/providers/anthropic.mjs"; // registers the default provider
 
 const RUNS_DIR = process.env.AQA_RUNS_DIR ?? "pipeline/runs";
 
@@ -145,6 +152,12 @@ async function cmdRun(specPath, opts) {
   // A fresh nonce per invocation. Specs write "{run}" into their data so a re-run never
   // collides with what the last run left in the app.
   const session = { token: null, nonce: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}` };
+
+  // The intelligence. Built once per run so every agent shares a model and the
+  // ledger can cost the whole cycle.
+  const provider = createProvider(opts.provider ?? process.env.AQA_PROVIDER ?? "anthropic", { model: opts.model });
+  const ledger = newLedger();
+  log.line(c.dim(`  agents: ${provider.id} · ${provider.model}`));
   if (spec.auth && st.steps["00-preflight"]?.status === "done") {
     const { authenticate } = await import("./lib/probe.mjs");
     const a = await authenticate(cfg, spec.auth, { timeoutMs: cfg.REQUEST_TIMEOUT_MS });
@@ -162,7 +175,7 @@ async function cmdRun(specPath, opts) {
     const started = Date.now();
     let artifact;
     try {
-      artifact = await phase.run({ spec, cfg, artifacts, session, send: opts.send });
+      artifact = await phase.run({ spec, cfg, artifacts, session, provider, ledger, repoRoot: process.cwd(), runDir: runDir(runId), send: opts.send });
     } catch (e) {
       st.steps[phase.id] = { status: "error", at: new Date().toISOString(), error: String(e.message ?? e) };
       writeState(st);
@@ -189,7 +202,7 @@ async function cmdRun(specPath, opts) {
     const started = Date.now();
     let artifact;
     try {
-      artifact = await track.run({ spec, cfg, artifacts, session });
+      artifact = await track.run({ spec, cfg, artifacts, session, provider, ledger, repoRoot: process.cwd(), runDir: runDir(runId) });
     } catch (e) {
       artifact = { status: "error", gates: false, reason: String(e.message ?? e) };
       log.warn(`  ! ${track.id} errored: ${e.message}`);
@@ -209,6 +222,11 @@ async function cmdRun(specPath, opts) {
   const review = artifacts["08-review"];
   console.log(c.bold(`\n  pipeline complete`));
   console.log(`  ${run.passed} passed · ${run.failed} failed · ${run.skipped} skipped · ${review.blocking} blocking review finding(s)`);
+  const cost = ledger.total();
+  if (cost.agents > 0) {
+    console.log(c.dim(`  ${cost.agents} agent invocation(s) · ${cost.input.toLocaleString()} in / ${cost.output.toLocaleString()} out tokens · ${(cost.ms / 1000).toFixed(1)}s of model time`));
+    writeArtifact(runId, "_usage", { model: provider.model, provider: provider.id, total: cost, byAgent: ledger.entries() });
+  }
   console.log(c.dim(`  artifacts: ${path.join(runDir(runId), "artifacts")}\n`));
   // A run that produced failures exits non-zero so CI can act on it.
   if (run.failed > 0 || review.blocking > 0) process.exitCode = 2;
@@ -270,7 +288,11 @@ const USAGE = `
     node pipeline/orchestrator.mjs approve <runId> <CP1..CP5>
     node pipeline/orchestrator.mjs reject <runId> <CP1..CP5> --reason "why"
 
-  --send  let the Tracker Publisher actually write. Without it, every external write is a dry-run.
+  --send             let the Tracker Publisher actually write. Without it every external write is a dry-run.
+  --provider <name>  which intelligence drives the agents (default: anthropic)
+  --model <id>       which model (default: $AQA_MODEL, else the provider's default)
+
+  Needs ANTHROPIC_API_KEY: AQA drives its own agents rather than running inside a chat session.
 `;
 
 async function main() {
@@ -285,7 +307,12 @@ async function main() {
     switch (cmd) {
       case "run":
         if (!a1) return fail("run needs a spec file");
-        return await cmdRun(a1, { send: args.includes("--send"), runId: flag("--run-id") });
+        return await cmdRun(a1, {
+          send: args.includes("--send"),
+          runId: flag("--run-id"),
+          provider: flag("--provider"),
+          model: flag("--model"),
+        });
       case "status":
         if (!a1) return fail("status needs a runId");
         return cmdStatus(a1);
@@ -300,7 +327,7 @@ async function main() {
         process.exitCode = cmd ? 1 : 0;
     }
   } catch (e) {
-    if (e instanceof ConfigError || e instanceof SpecError) return fail(e.message);
+    if (e instanceof ConfigError || e instanceof SpecError || e instanceof ProviderError) return fail(e.message);
     throw e;
   }
 }

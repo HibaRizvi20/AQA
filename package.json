@@ -12,7 +12,8 @@
     "e2e": "playwright test",
     "e2e:bdd": "bddgen && playwright test --config playwright.bdd.config.ts",
     "report": "node pipeline/report.mjs",
-    "demo:full": "node examples/run-demo.mjs"
+    "demo:full": "node examples/run-demo.mjs",
+    "ab": "node pipeline/ab.mjs examples/demo-spec.json --truth examples/demo-ground-truth.json"
   },
   "license": "MIT",
   "author": "Hiba Rizvi",
@@ -55,5 +56,8 @@
   },
   "peerDependencies": {
     "playwright": ">=1.40"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0"
   }
 }
