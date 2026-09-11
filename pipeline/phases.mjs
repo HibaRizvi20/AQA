@@ -255,25 +255,44 @@ async function selfHeal(ctx) {
     ctx,
     agent: "triage-self-healer",
     task:
-      "Diagnose every failure. For each: is it a known-flaky intermittent, a test defect, a product bug, or does it need a human? Give the evidence behind your conclusion. Where it is a TEST defect and can be repaired safely, state the exact repaired case. You may NOT weaken an assertion to reach green: if the only way to pass is to assert less, that is a product bug or a human decision, not a heal. Where it is a product bug, stage it with evidence and do not touch the test.",
+      "Diagnose every failure, into exactly one of five classes:\n" +
+      "  product_defect               the application is wrong\n" +
+      "  valid_behaviour              the application is RIGHT and the test expected the wrong thing\n" +
+      "  requirement_misunderstanding the case was built on a misreading of the requirement\n" +
+      "  test_false_alarm             the test itself is broken: stale selector, bad timing, wrong assertion\n" +
+      "  inconclusive                 the evidence does not settle it\n\n" +
+      "The second and third classes matter as much as the first. A failing test is not proof the app is wrong, and calling correct behaviour a defect is the most expensive mistake this pipeline can make: it sends a developer to fix something that was never broken and it teaches the team to distrust the suite.\n\n" +
+      "Read the requirement before you judge. Where an earlier phase treated something as a defect and you conclude it is valid behaviour, say so explicitly in `corrections` — overturning an earlier conclusion is a legitimate outcome, not a failure of the pipeline.\n\n" +
+      "Where it is a test_false_alarm and can be repaired safely, state the exact repaired case. You may NOT weaken an assertion to reach green: if the only way to pass is to assert less, that is a product defect or a human decision, not a heal.",
     input: {failures, generated: ctx.artifacts["04-generate"], cases: ctx.artifacts["03-case-design"]?.cases ?? []},
     toolsets: ["probe", "ui", "artifacts"],
     schema: `{
   "triaged": [{
     "id": "string",
-    "classification": "known_flaky|test_defect|product_bug|needs_human",
+    "observable": "string (what was seen, e.g. '500 on re-adding a deleted link')",
+    "classification": "product_defect|valid_behaviour|requirement_misunderstanding|test_false_alarm|inconclusive",
     "severity": "high|medium|low|info",
+    "observed": "string (what the application actually did)",
+    "expected": "string (what it should have done)",
+    "rule": "string (the requirement or contract this rests on)",
+    "reproduction": "string (the exact request or steps)",
+    "why_a_defect": "string, or why it is NOT one",
     "evidence": "string",
-    "detail": "string",
     "repaired_case": "null, or the full corrected case object carrying a contract or ui.steps",
     "weakened_assertion": false
+  }],
+  "corrections": [{
+    "subject_id": "string (the case or defect id being reconsidered)",
+    "from_phase": "string (the phase whose conclusion you are overturning)",
+    "corrected_to": "defect|valid",
+    "reasoning": "string (what in the requirement or the evidence settles it)"
   }]
 }`,
   });
 
   // Every proposed repair is re-run. The agent proposes; execution decides.
   // "healed" means a real re-run passed, not that an agent said so.
-  const repairs = (decision.triaged ?? []).filter((t) => t.classification === "test_defect" && t.repaired_case);
+  const repairs = (decision.triaged ?? []).filter((t) => t.classification === "test_false_alarm" && t.repaired_case);
   const verify = repairs.length
     ? await executeCases(repairs.map((t) => ({...t.repaired_case, id: t.id})), ctx)
     : {results: []};
@@ -286,13 +305,17 @@ async function selfHeal(ctx) {
       : t;
   });
 
+  const of = (cls) => triaged.filter((t) => t.classification === cls).length;
   return {
     failures: failures.length,
     healed: triaged.filter((t) => t.heal_verified).length,
     proposed_repairs_that_did_not_pass: triaged.filter((t) => t.heal_result && t.heal_result !== "pass").length,
-    bugs_staged: triaged.filter((t) => t.classification === "product_bug").length,
-    known_flaky_skipped: triaged.filter((t) => t.classification === "known_flaky").length,
-    needs_human: triaged.filter((t) => t.classification === "needs_human").length,
+    bugs_staged: of("product_defect"),
+    rejected_as_valid: of("valid_behaviour"),
+    requirement_misunderstandings: of("requirement_misunderstanding"),
+    test_false_alarms: of("test_false_alarm"),
+    inconclusive: of("inconclusive"),
+    corrections: decision.corrections ?? [],
     cap_cycles: 3,
     triaged,
     _agent: decision._agent,
@@ -343,7 +366,12 @@ async function review(ctx) {
     ctx,
     agent: "reviewer",
     task:
-      "Review this cycle as a whole and answer one question honestly: does this actually prove the feature works? Examine the requirement, the scope decisions, the cases, the generated implementation, the run results and the triage. You may disagree with earlier agents, and saying so is the reason you exist separately from them. Then review the generated tests against the conventions: every scenario keyed and tagged, no bare 2xx assertion, page objects untouched, selectors verified. Report findings; do NOT fix them — a finding silently repaired teaches nobody, and Triage owns fixes. An untagged scenario is blocking.",
+      "Review this cycle as a whole and answer one question honestly: does this actually prove the feature works?\n\n" +
+      "You are the last independent reader. Examine the requirement, the scope decisions, the cases, the generated implementation, the run results and the triage — and be willing to OVERTURN an earlier conclusion in either direction:\n" +
+      "  · an earlier phase called something a defect, but the requirement actually permits it → reject the defect\n" +
+      "  · an earlier phase accepted something as valid, but the requirement forbids it → raise it as a defect\n\n" +
+      "Record each one in `corrections` with the reasoning that settles it. Do not disagree for its own sake: a wrong overturn is worse than none, because it either sends a developer after a phantom or buries a real defect. Overturn only where the requirement or the evidence decides it.\n\n" +
+      "Then review the generated tests against the conventions: every scenario keyed and tagged, no bare 2xx assertion, page objects untouched, selectors verified. Report findings; do NOT fix them — a finding silently repaired teaches nobody, and Triage owns fixes. An untagged scenario is blocking.",
     input: {
       requirement: ctx.spec,
       scope: ctx.artifacts["01-scope"],
@@ -358,6 +386,13 @@ async function review(ctx) {
     schema: `{
   "proves_the_feature_works": true,
   "verdict_reasoning": "string",
+  "corrections": [{
+    "subject_id": "string (the case or defect id being reconsidered)",
+    "from_phase": "string (whose conclusion you are overturning)",
+    "corrected_to": "defect|valid",
+    "reasoning": "string (what in the requirement or the evidence settles it)",
+    "confidence": "high|medium|low"
+  }],
   "disagreements": [{"with": "phase id", "what": "string", "why": "string"}],
   "findings": [{"rule": "string", "verdict": "pass|fail|warn", "blocking": false, "detail": "string"}],
   "coverage_gaps": ["string"],
